@@ -41,16 +41,16 @@ export const TodoInput: React.FC<TodoInputProps> = ({
           <button
             type="button"
             onClick={toggleVoice}
-            disabled={!canVoice}
+            aria-disabled={!canVoice}
             className={`p-4 rounded-2xl transition-all curvy-btn shadow-md shrink-0 ${
               !canVoice
-                ? 'bg-slate-200 text-slate-400'
+                ? 'bg-gradient-to-br from-sky-400 to-indigo-500 text-white opacity-60'
                 : isListening
                   ? 'bg-rose-500 text-white animate-pulse'
                   : 'bg-gradient-to-br from-sky-400 to-indigo-500 text-white'
             }`}
           >
-            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+            {!canVoice ? <MicOff size={22} /> : (isListening ? <MicOff size={22} /> : <Mic size={22} />)}
           </button>
           <div className="flex-1 overflow-hidden relative">
             {showPlaceholder && (

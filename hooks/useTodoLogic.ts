@@ -187,6 +187,12 @@ export const useTodoLogic = () => {
 
   const toggleVoice = () => {
     if (voiceMode === 'none') {
+      const alreadyShown = localStorage.getItem('curvycloud_voice_hint_shown') === 'true';
+      if (!alreadyShown) {
+        localStorage.setItem('curvycloud_voice_hint_shown', 'true');
+        setVoiceHint('Voice input isn’t available on this device/build. Type your intent instead.');
+        setTimeout(() => setVoiceHint(null), 8000);
+      }
       triggerHaptic('warning');
       return;
     }
