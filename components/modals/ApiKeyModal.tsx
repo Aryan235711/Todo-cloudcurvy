@@ -27,16 +27,23 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">BYOK Ecosystem Model</p>
           </div>
           <div className="bg-white/40 p-6 rounded-[2rem] text-sm text-slate-600 font-medium leading-relaxed border border-white/60">
-            CurvyCloud is a free, privacy-first tool. To manifest with AI, we use your own Gemini API key. This ensures your data remains yours and the app stays free forever.
+            CurvyCloud is a free, privacy-first tool. To manifest with AI, you link your own AI API key (currently Gemini). Your key stays on-device and powers your private AI features.
+
+            <div className="mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-100 text-amber-900">
+              <p className="text-xs font-black uppercase tracking-widest">Free-tier warning</p>
+              <p className="mt-2 text-sm font-semibold leading-snug">
+                Free keys can exhaust quickly. For the most efficient use of calls, generate a <span className="font-black">Manifest Kit</span> (template) with Sparkles, then Deploy it—this creates many tasks from a single AI request.
+              </p>
+            </div>
             <div className="mt-4 pt-4 border-t border-white/40">
               <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-indigo-500 font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:gap-3 transition-all">
-                Learn about Free Usage <ChevronRight size={12} />
+                Learn about Free Usage (Gemini) <ChevronRight size={12} />
               </a>
             </div>
           </div>
           <div className="w-full flex flex-col gap-3">
              <button onClick={onConnect} className={`w-full py-5 rounded-[2rem] font-black text-lg shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${hasApiKey ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white'}`}>
-               {hasApiKey ? <><RotateCcw size={22} /> Switch AI Key</> : <><Key size={22} /> Link My Gemini Key</>}
+               {hasApiKey ? <><RotateCcw size={22} /> Switch AI Key</> : <><Key size={22} /> Link My AI Key</>}
              </button>
              {hasApiKey && (
                <div className="flex items-center justify-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 py-2 rounded-xl">

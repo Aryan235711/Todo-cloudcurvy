@@ -24,7 +24,7 @@ const steps = [
   {
     title: "AI Co-Pilot",
     subtitle: "Manifest your vision instantly.",
-    description: "Type or speak your goal. Our AI breaks down complex tasks into tiny, actionable steps so you never feel overwhelmed.",
+    description: "Type or speak your goal. The AI breaks down complex tasks into tiny, actionable steps so you never feel overwhelmed.",
     icon: <Sparkles size={60} className="text-indigo-400" />,
     color: "from-indigo-50 to-white",
     accent: "bg-indigo-500",
@@ -63,7 +63,7 @@ const steps = [
   {
     title: "Sustainable AI",
     subtitle: "Bring your own magic.",
-    description: "CurvyCloud uses the BYOK model. Link your Gemini API key to enjoy unlimited, private AI manifestations at zero cost to us and you.",
+    description: "CurvyCloud uses the BYOK model. Link your AI API key to enable private AI features. Free-tier keys can exhaust quickly—Manifest Kits (templates) are the most efficient way to get many tasks from a single AI call.",
     icon: <Key size={60} className="text-indigo-400" />,
     color: "from-indigo-50 to-white",
     accent: "bg-indigo-600",
