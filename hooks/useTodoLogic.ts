@@ -4,6 +4,7 @@ import { Todo, Template, Priority, Category } from '../types';
 import { getSmartMotivation, generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
 import { triggerHaptic, sendNudge, requestNotificationPermission } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
+import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
 
 export const useTodoLogic = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -18,6 +19,7 @@ export const useTodoLogic = () => {
   const [hasApiKey, setHasApiKey] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<'native' | 'web' | 'none'>('none');
   
   const [reviewingTemplate, setReviewingTemplate] = useState<Template | null>(null);
   const [selectedReviewIndices, setSelectedReviewIndices] = useState<Set<number>>(new Set());
@@ -101,10 +103,16 @@ export const useTodoLogic = () => {
     }
   }, [todos.length, hasApiKey]);
 
-  // Voice recognition init
+  // Voice recognition init (native plugin on mobile, Web Speech on browser)
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    void (async () => {
+      const mode = await getVoiceMode();
+      setVoiceMode(mode);
+
+      if (mode !== 'web') return;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) return;
+
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
@@ -112,10 +120,33 @@ export const useTodoLogic = () => {
         setIsListening(false);
       };
       recognitionRef.current.onend = () => setIsListening(false);
-    }
+    })();
   }, []);
 
   const toggleVoice = () => {
+    if (voiceMode === 'none') {
+      triggerHaptic('warning');
+      return;
+    }
+
+    if (voiceMode === 'native') {
+      if (isListening) {
+        void stopNativeVoice().finally(() => setIsListening(false));
+        return;
+      }
+      setIsListening(true);
+      void (async () => {
+        try {
+          const transcript = await startNativeVoice({ prompt: 'Speak your task' });
+          if (transcript) setInputValue(prev => (prev ? prev + ' ' + capitalize(transcript) : capitalize(transcript)));
+        } finally {
+          setIsListening(false);
+        }
+      })();
+      return;
+    }
+
+    // web
     if (isListening) recognitionRef.current?.stop();
     else { setIsListening(true); recognitionRef.current?.start(); }
   };
@@ -244,6 +275,7 @@ export const useTodoLogic = () => {
     filterCategory, setFilterCategory,
     motivation,
     isListening, toggleVoice,
+    voiceMode,
     hasApiKey, setHasApiKey,
     aiError, setAiError,
     isMagicLoading,

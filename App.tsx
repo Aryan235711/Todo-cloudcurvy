@@ -28,6 +28,7 @@ const App: React.FC = () => {
     filterCategory, setFilterCategory,
     motivation,
     isListening, toggleVoice,
+    voiceMode,
     hasApiKey, setHasApiKey,
     aiError, setAiError,
     isMagicLoading,
@@ -181,6 +182,7 @@ const App: React.FC = () => {
           setActivePriority={setActivePriority}
           isListening={isListening}
           toggleVoice={toggleVoice}
+          voiceMode={voiceMode}
           isMagicLoading={isMagicLoading}
           onMagic={async () => { const res = await handleMagicTemplate(); if (res === 'OPEN_KEY_MODAL') setIsKeyModalOpen(true); }}
           onSubmit={handleAddTodo}

@@ -11,6 +11,7 @@ interface TodoInputProps {
   setActivePriority: (p: Priority) => void;
   isListening: boolean;
   toggleVoice: () => void;
+  voiceMode?: 'native' | 'web' | 'none';
   isMagicLoading: boolean;
   onMagic: () => Promise<void>;
   onSubmit: (e: React.FormEvent) => void;
@@ -23,10 +24,12 @@ export const TodoInput: React.FC<TodoInputProps> = ({
   setActivePriority,
   isListening,
   toggleVoice,
+  voiceMode = 'none',
   isMagicLoading,
   onMagic,
   onSubmit
 }) => {
+  const canVoice = voiceMode !== 'none';
   return (
     <div className="liquid-glass rounded-[2.5rem] p-4 sm:p-5 curvy-shadow mb-10 sticky top-4 z-40 w-full flex flex-col gap-4">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -34,8 +37,13 @@ export const TodoInput: React.FC<TodoInputProps> = ({
           <button
             type="button"
             onClick={toggleVoice}
+            disabled={!canVoice}
             className={`p-4 rounded-2xl transition-all curvy-btn shadow-md shrink-0 ${
-              isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-gradient-to-br from-sky-400 to-indigo-500 text-white'
+              !canVoice
+                ? 'bg-slate-200 text-slate-400'
+                : isListening
+                  ? 'bg-rose-500 text-white animate-pulse'
+                  : 'bg-gradient-to-br from-sky-400 to-indigo-500 text-white'
             }`}
           >
             {isListening ? <MicOff size={22} /> : <Mic size={22} />}
