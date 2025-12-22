@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } from 'react';
 import { Todo, Template, Priority, Category } from '../types';
 import { getSmartMotivation, generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
-import { triggerHaptic, sendNudge, requestNotificationPermission } from '../services/notificationService';
+import { triggerHaptic, sendNudge } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
 import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
 
@@ -85,8 +85,20 @@ export const useTodoLogic = () => {
   useEffect(() => {
     const savedTodos = localStorage.getItem('curvycloud_todos');
     const savedTemplates = localStorage.getItem('curvycloud_templates');
-    if (savedTodos) try { setTodos(JSON.parse(savedTodos)); } catch (e) {}
-    if (savedTemplates) try { setTemplates(JSON.parse(savedTemplates)); } catch (e) {}
+    if (savedTodos) {
+      try {
+        setTodos(JSON.parse(savedTodos));
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('Failed to parse saved todos', e);
+      }
+    }
+    if (savedTemplates) {
+      try {
+        setTemplates(JSON.parse(savedTemplates));
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('Failed to parse saved templates', e);
+      }
+    }
     setIsInitialLoad(false);
   }, []);
 
@@ -106,7 +118,9 @@ export const useTodoLogic = () => {
         const msg = await getSmartMotivation(todos.filter(t => !t.completed).length);
         setMotivation(msg);
         lastMotivationUpdate.current = Date.now();
-      } catch (e) {}
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('Failed to update motivation', e);
+      }
     };
     if (todos.length > 0) {
       const timeout = setTimeout(updateMotivation, 2000);
@@ -116,15 +130,22 @@ export const useTodoLogic = () => {
 
   // Voice recognition init (native plugin on mobile, Web Speech on browser)
   useEffect(() => {
+    let cancelled = false;
+
     void (async () => {
       const mode = await getVoiceMode();
+      if (cancelled) return;
       setVoiceMode(mode);
 
       if (mode !== 'web') return;
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) return;
 
-      recognitionRef.current = new SpeechRecognition();
+      const recognition = new SpeechRecognition();
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.lang = 'en-US';
+      recognitionRef.current = recognition;
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInputValue(prev => (prev ? prev + ' ' + capitalize(transcript) : capitalize(transcript)));
@@ -136,6 +157,16 @@ export const useTodoLogic = () => {
       };
       recognitionRef.current.onend = () => setIsListening(false);
     })();
+
+    return () => {
+      cancelled = true;
+      try {
+        recognitionRef.current?.stop?.();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    };
   }, []);
 
   const toggleVoice = () => {
@@ -167,11 +198,18 @@ export const useTodoLogic = () => {
   };
 
   const handleError = (err: any) => {
-    const msg = err.message || "";
-    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
+    const msg =
+      (typeof err?.message === 'string' && err.message) ||
+      (typeof err === 'string' && err) ||
+      '';
+    const upperMsg = msg.toUpperCase();
+    const status = err?.status || err?.response?.status;
+    const code = err?.code || err?.error?.code;
+
+    if (status === 429 || code === 429 || upperMsg.includes('429') || upperMsg.includes('RESOURCE_EXHAUSTED') || upperMsg.includes('QUOTA')) {
       setAiError("AI Quota Exhausted. Please check your Gemini plan/billing.");
       triggerHaptic('warning');
-    } else if (msg.includes("Requested entity was not found")) {
+    } else if (upperMsg.includes('REQUESTED ENTITY WAS NOT FOUND')) {
       setHasApiKey(false);
       setAiError("API Key invalid or not found. Please re-link.");
     } else {
