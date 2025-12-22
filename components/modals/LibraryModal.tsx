@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Library, Zap, ChevronDown, Save, Play, Edit3, Trash2 } from 'lucide-react';
 import { Template, Priority } from '../../types';
 
@@ -16,13 +16,107 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editTemplateData, setEditTemplateData] = useState<Template | null>(null);
-
-  if (!isOpen) return null;
+  const [selectedTag, setSelectedTag] = useState<string>('');
 
   const handleEditTemplate = (tmpl: Template) => {
     setEditingTemplateId(tmpl.id);
     setEditTemplateData({ ...tmpl });
   };
+
+  const normalizeTag = (t: string) => t.trim().toLowerCase();
+  const isNonEmptyTag = (t: string): t is string => t.trim().length > 0;
+
+  const GENERIC_TAGS = new Set([
+    'recurring',
+    'routine',
+    'daily',
+    'weekly',
+    'monthly',
+    'yearly',
+    'plan',
+    'checklist',
+    'list',
+    'general',
+    'basic',
+    'misc',
+    'miscellaneous'
+  ]);
+
+  const globalTagCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tmpl of templates) {
+      const uniq = new Set<string>((tmpl.tags || []).map(normalizeTag).filter(isNonEmptyTag));
+      for (const t of uniq) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return counts;
+  }, [templates]);
+
+  const primaryTagByTemplateId = useMemo(() => {
+    const totalTemplates = Math.max(1, templates.length);
+    const pickPrimary = (tags: string[]) => {
+      const uniq = [...new Set<string>(tags.map(normalizeTag).filter(isNonEmptyTag))];
+      if (uniq.length === 0) return null;
+
+      let best: string | null = null;
+      let bestScore = -Infinity;
+
+      for (const tag of uniq) {
+        const count = globalTagCounts.get(tag) ?? 0;
+        const idf = Math.log((totalTemplates + 1) / (count + 1)) + 1;
+        const genericPenalty = GENERIC_TAGS.has(tag) ? 0.25 : 1;
+        const score = idf * genericPenalty;
+        if (score > bestScore) {
+          bestScore = score;
+          best = tag;
+        }
+      }
+
+      return best;
+    };
+
+    const map = new Map<string, string | null>();
+    for (const tmpl of templates) map.set(tmpl.id, pickPrimary(tmpl.tags || []));
+    return map;
+  }, [templates, globalTagCounts]);
+
+  const availableTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    const display = new Map<string, string>();
+
+    for (const tmpl of templates) {
+      const primary = primaryTagByTemplateId.get(tmpl.id);
+      if (!primary) continue;
+      counts.set(primary, (counts.get(primary) ?? 0) + 1);
+
+      const original = (tmpl.tags || []).find(t => normalizeTag(t) === primary)?.trim();
+      if (original && !display.has(primary)) display.set(primary, original);
+    }
+
+    return [...counts.entries()]
+      .sort((a, b) => {
+        const byCount = (b[1] ?? 0) - (a[1] ?? 0);
+        if (byCount !== 0) return byCount;
+        return a[0].localeCompare(b[0]);
+      })
+      .map(([norm, count]) => ({
+        value: norm,
+        label: display.get(norm) || norm,
+        count
+      }));
+  }, [templates, primaryTagByTemplateId]);
+
+  const visibleTemplates = useMemo(() => {
+    const filtered = selectedTag
+      ? templates.filter(tmpl => (primaryTagByTemplateId.get(tmpl.id) || '') === selectedTag)
+      : templates;
+
+    return filtered.slice().sort((a, b) => {
+      const pMap = { high: 3, medium: 2, low: 1 };
+      return (pMap[b.priority || 'low'] || 0) - (pMap[a.priority || 'low'] || 0);
+    });
+  }, [templates, selectedTag, primaryTagByTemplateId]);
+
+  if (!isOpen) return null;
 
   const handleDeleteTemplate = (tmpl: Template) => {
     const ok = confirm(`Delete “${tmpl.name}” from your Manifest Vault?`);
@@ -61,14 +155,40 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
           <h2 className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3"><Library className="text-indigo-500" /> Manifest Vault</h2>
           <button onClick={onClose} className="p-3 bg-white/60 rounded-xl"><X size={22} /></button>
         </div>
+        <div className="mb-5 bg-white/40 border border-white/50 rounded-[1.8rem] p-4">
+          <label className="block text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mb-2">
+            Filter by tag
+          </label>
+          <select
+            value={selectedTag}
+            onChange={(e) => {
+              setSelectedTag(e.target.value);
+              setExpandedTemplateId(null);
+              setEditingTemplateId(null);
+              setEditTemplateData(null);
+            }}
+            className="w-full bg-white/70 border border-white/70 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700"
+          >
+            <option value="">All tags</option>
+            {availableTags.map(t => (
+              <option key={t.value} value={t.value}>
+                {t.label} ({t.count})
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-          {templates.slice().sort((a,b) => {
-            const pMap = { high: 3, medium: 2, low: 1 };
-            return (pMap[b.priority || 'low'] || 0) - (pMap[a.priority || 'low'] || 0);
-          }).map((tmpl) => {
+          {visibleTemplates.map((tmpl) => {
             const isExpanded = expandedTemplateId === tmpl.id;
             const isEditing = editingTemplateId === tmpl.id;
             const isHigh = tmpl.priority === 'high';
+            const primary = primaryTagByTemplateId.get(tmpl.id);
+            const orderedTags = tmpl.tags?.length
+              ? [
+                  ...(primary ? tmpl.tags.filter(t => normalizeTag(t) === primary) : []),
+                  ...tmpl.tags.filter(t => !primary || normalizeTag(t) !== primary)
+                ]
+              : [];
             return (
               <div key={tmpl.id} className={`bg-white/80 rounded-[2.2rem] border-2 transition-all ${isExpanded ? 'border-sky-300 shadow-xl' : isHigh ? 'border-rose-100' : 'border-transparent'}`}>
                 <button onClick={() => !isEditing && setExpandedTemplateId(isExpanded ? null : tmpl.id)} className="w-full text-left p-6 flex items-center justify-between">
@@ -78,6 +198,19 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
                       {isHigh && <span className="text-[9px] uppercase font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-lg flex items-center gap-1"><Zap size={10} fill="currentColor" /> High</span>}
                     </div>
                     <h3 className="font-black text-lg tracking-tight truncate">{tmpl.name}</h3>
+                    {orderedTags.length > 0 && (
+                      <div className="flex gap-2 mt-2 overflow-hidden">
+                        {orderedTags.slice(0, 3).map((tag, i) => (
+                          <span
+                            key={`${tmpl.id}-tag-${i}`}
+                            className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-lg truncate ${primary && normalizeTag(tag) === primary ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 bg-slate-50'}`}
+                            title={tag}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <ChevronDown className={`transition-transform duration-700 ${isExpanded ? 'rotate-180 text-sky-500' : 'text-slate-200'}`} />
                 </button>
