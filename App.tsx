@@ -202,7 +202,12 @@ const App: React.FC = () => {
         <Footer
           onPurge={() => {
             if(confirm("Permanently erase everything? This includes all your tasks and custom templates.")) {
-              setTodos([]); setTemplates([]); localStorage.clear(); window.location.reload();
+              setTodos([]);
+              setTemplates([]);
+              localStorage.removeItem('curvycloud_todos');
+              localStorage.removeItem('curvycloud_templates');
+              localStorage.removeItem('curvycloud_onboarding_seen');
+              window.location.reload();
             }
           }}
         />
