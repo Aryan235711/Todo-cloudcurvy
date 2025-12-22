@@ -4,28 +4,7 @@ import { Preferences } from '@capacitor/preferences';
 
 const STORAGE_KEY = 'curvycloud_gemini_api_key';
 
-const getSecureStorage = async () => {
-  if (!Capacitor.isNativePlatform()) return null;
-
-  try {
-    const mod = await import('capacitor-secure-storage-plugin');
-    return mod.SecureStoragePlugin;
-  } catch {
-    return null;
-  }
-};
-
 export const getStoredApiKey = async (): Promise<string> => {
-  const secure = await getSecureStorage();
-  if (secure) {
-    try {
-      const res = await secure.get({ key: STORAGE_KEY });
-      return (res?.value || '').trim();
-    } catch {
-      return '';
-    }
-  }
-
   if (Capacitor.isNativePlatform()) {
     const res = await Preferences.get({ key: STORAGE_KEY });
     return (res.value || '').trim();
@@ -36,12 +15,6 @@ export const getStoredApiKey = async (): Promise<string> => {
 
 export const setStoredApiKey = async (value: string): Promise<void> => {
   const trimmed = value.trim();
-  const secure = await getSecureStorage();
-  if (secure) {
-    await secure.set({ key: STORAGE_KEY, value: trimmed });
-    return;
-  }
-
   if (Capacitor.isNativePlatform()) {
     await Preferences.set({ key: STORAGE_KEY, value: trimmed });
     return;
@@ -51,16 +24,6 @@ export const setStoredApiKey = async (value: string): Promise<void> => {
 };
 
 export const clearStoredApiKey = async (): Promise<void> => {
-  const secure = await getSecureStorage();
-  if (secure) {
-    try {
-      await secure.remove({ key: STORAGE_KEY });
-    } catch {
-      // ignore
-    }
-    return;
-  }
-
   if (Capacitor.isNativePlatform()) {
     await Preferences.remove({ key: STORAGE_KEY });
     return;
