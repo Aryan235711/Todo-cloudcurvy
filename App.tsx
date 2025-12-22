@@ -63,7 +63,7 @@ const App: React.FC = () => {
         const validation = await validateApiKey(maybeKey);
         if (validation === 'invalid') {
           setHasApiKey(false);
-          setAiError('That API key looks invalid. Please paste a valid Gemini API key.');
+          setAiError('That API key looks invalid. Please paste a valid AI API key.');
           triggerHaptic('warning');
           return;
         }

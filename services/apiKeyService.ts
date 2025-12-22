@@ -36,7 +36,7 @@ export const promptForApiKey = async (): Promise<string | null> => {
   if (Capacitor.isNativePlatform()) {
     const res = await Dialog.prompt({
       title: 'AI API Key',
-      message: 'Paste your AI API key to enable AI features on this device. (Currently supports Gemini keys.)',
+      message: 'Paste your AI API key to enable AI features on this device.',
       inputPlaceholder: 'Paste key…',
       okButtonTitle: 'Save',
       cancelButtonTitle: 'Cancel',
@@ -46,7 +46,7 @@ export const promptForApiKey = async (): Promise<string | null> => {
     return (res.value || '').trim();
   }
 
-  const res = window.prompt('Paste your AI API key to enable AI features (currently Gemini):');
+  const res = window.prompt('Paste your AI API key to enable AI features:');
   if (res === null) return null;
   return res.trim();
 };

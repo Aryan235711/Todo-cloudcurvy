@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } from 'react';
 import { Todo, Template, Priority, Category } from '../types';
-import { generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
+import { generateTemplateFromPrompt } from '../services/geminiService';
 import { triggerHaptic, sendNudge } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
 import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
@@ -289,7 +289,7 @@ export const useTodoLogic = () => {
       setAiError('AI is cooling down to protect your quota. Try again later.');
       triggerHaptic('warning');
     } else if (status === 429 || code === 429 || upperMsg.includes('429') || upperMsg.includes('RESOURCE_EXHAUSTED') || upperMsg.includes('QUOTA')) {
-      setAiError("AI Quota Exhausted. Please check your Gemini plan/billing.");
+      setAiError('AI quota exhausted. Please check your plan/billing.');
       triggerHaptic('warning');
     } else if (upperMsg.includes('REQUESTED ENTITY WAS NOT FOUND')) {
       setHasApiKey(false);
@@ -313,25 +313,12 @@ export const useTodoLogic = () => {
       createdAt: Date.now(),
       category: 'other',
       priority: activePriority,
-      tags: []
+      tags: [],
+      isUrgent: false
     };
     
     setTodos(prev => [initialTodo, ...prev]);
     setInputValue('');
-
-    if (hasApiKey) {
-      try {
-        const refined = await refineTaskMetadata(initialTodo.text);
-        setTodos(prev => prev.map(t => t.id === newId ? { 
-          ...t, 
-          ...refined, 
-          category: refined.category as Category, 
-          priority: refined.isUrgent ? 'high' : t.priority 
-        } : t));
-      } catch (err) {
-        handleError(err);
-      }
-    }
   };
 
   const handleMagicTemplate = async () => {
