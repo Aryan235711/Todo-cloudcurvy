@@ -26,6 +26,8 @@
       min-height: 100dvh;
       /* Prevent elastic bounce on iOS for cleaner app feel */
       overscroll-behavior-y: none;
+      /* Optimize scrolling for 120Hz displays */
+      -webkit-overflow-scrolling: touch;
     }
     .curvy-shadow {
       box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.05);
