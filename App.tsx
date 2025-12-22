@@ -206,7 +206,7 @@ const App: React.FC = () => {
 
   return (
     <div className="app-scroller no-scrollbar">
-      <div className="w-full max-w-2xl mx-auto px-4 sm:px-8 py-8 md:py-16 flex flex-col min-h-full">
+      <div className="w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-8 py-8 md:py-16 flex flex-col min-h-full">
         <Header
           onShowOnboarding={() => { setShowOnboarding(true); triggerHaptic('medium'); }}
           onOpenKeyModal={() => setIsKeyModalOpen(true)}
