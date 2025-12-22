@@ -18,6 +18,7 @@ export const useTodoLogic = () => {
   const [isListening, setIsListening] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [notificationHint, setNotificationHint] = useState<string | null>(null);
   const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [voiceMode, setVoiceMode] = useState<'native' | 'web' | 'none'>('none');
   
@@ -79,7 +80,15 @@ export const useTodoLogic = () => {
       if (staleHigh) {
         void (async () => {
           const sent = await sendNudge("Urgent Intent", `"${staleHigh.text}" is drifting. Re-center your focus.`);
-          if (!sent) return;
+          if (!sent) {
+            const alreadyShown = localStorage.getItem('curvycloud_notifications_hint_shown') === 'true';
+            if (!alreadyShown) {
+              localStorage.setItem('curvycloud_notifications_hint_shown', 'true');
+              setNotificationHint('Enable notifications to receive nudges.');
+              setTimeout(() => setNotificationHint(null), 8000);
+            }
+            return;
+          }
           setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
         })();
       }
@@ -337,6 +346,7 @@ export const useTodoLogic = () => {
     voiceMode,
     hasApiKey, setHasApiKey,
     aiError, setAiError,
+    notificationHint, setNotificationHint,
     isMagicLoading,
     reviewingTemplate, setReviewingTemplate,
     selectedReviewIndices, setSelectedReviewIndices,

@@ -9,7 +9,7 @@ import { useTodoLogic } from './hooks/useTodoLogic';
 import { ApiKeyModal } from './components/modals/ApiKeyModal';
 import { LibraryModal } from './components/modals/LibraryModal';
 import { ReviewModal } from './components/modals/ReviewModal';
-import { triggerHaptic } from './services/notificationService';
+import { requestNotificationPermission, triggerHaptic } from './services/notificationService';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 import { validateApiKey } from './services/geminiService';
 
@@ -32,6 +32,7 @@ const App: React.FC = () => {
     voiceMode,
     hasApiKey, setHasApiKey,
     aiError, setAiError,
+    notificationHint, setNotificationHint,
     isMagicLoading,
     reviewingTemplate, setReviewingTemplate,
     selectedReviewIndices, setSelectedReviewIndices,
@@ -169,6 +170,18 @@ const App: React.FC = () => {
   const handleFinishOnboarding = () => {
     localStorage.setItem('curvycloud_onboarding_seen', 'true');
     setShowOnboarding(false);
+
+    const prompted = localStorage.getItem('curvycloud_notifications_prompted') === 'true';
+    if (!prompted) {
+      localStorage.setItem('curvycloud_notifications_prompted', 'true');
+      void (async () => {
+        try {
+          await requestNotificationPermission();
+        } catch {
+          // ignore
+        }
+      })();
+    }
   };
 
   if (showOnboarding === null) return null;
@@ -191,6 +204,14 @@ const App: React.FC = () => {
              <div className="p-3 bg-white rounded-2xl text-rose-500 shadow-sm"><AlertTriangle size={24} /></div>
              <p className="text-sm font-black text-rose-800 tracking-tight leading-snug">{aiError}</p>
              <button aria-label="Dismiss error" onClick={() => setAiError(null)} className="ml-auto text-rose-300 hover:text-rose-500"><X size={20} /></button>
+          </div>
+        )}
+
+        {!aiError && notificationHint && (
+          <div className="mb-8 p-5 bg-amber-50 border border-amber-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+            <div className="p-3 bg-white rounded-2xl text-amber-600 shadow-sm"><AlertTriangle size={24} /></div>
+            <p className="text-sm font-black text-amber-800 tracking-tight leading-snug">{notificationHint}</p>
+            <button aria-label="Dismiss notification hint" onClick={() => setNotificationHint(null)} className="ml-auto text-amber-300 hover:text-amber-600"><X size={20} /></button>
           </div>
         )}
 
