@@ -28,6 +28,7 @@ export const useTodoLogic = () => {
   
   const recognitionRef = useRef<any>(null);
   const lastMotivationUpdate = useRef<number>(0);
+  const lastMotivationPending = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
 
   const getLocalMotivation = (pendingCount: number) => {
@@ -160,16 +161,31 @@ export const useTodoLogic = () => {
   }, [todos, templates, isInitialLoad]);
 
   // Motivation (local-only; avoids burning API quota)
+  // Keep it correct: if pending count changes (esp. to 0), update even if within throttle.
   useEffect(() => {
-    if (Date.now() - lastMotivationUpdate.current < 15000) return;
+    if (todos.length === 0) return;
+
     const pending = todos.filter(t => !t.completed).length;
-    if (todos.length > 0) {
-      const timeout = setTimeout(() => {
-        setMotivation(getLocalMotivation(pending));
-        lastMotivationUpdate.current = Date.now();
-      }, 2000);
-      return () => clearTimeout(timeout);
+    const pendingChanged = lastMotivationPending.current === null || pending !== lastMotivationPending.current;
+
+    // When everything is completed, don't let a stale "(1 left)" message linger.
+    if (pending === 0) {
+      setMotivation(getLocalMotivation(0));
+      lastMotivationPending.current = 0;
+      lastMotivationUpdate.current = Date.now();
+      return;
     }
+
+    // If the count changed, prefer correctness over throttling.
+    if (!pendingChanged && Date.now() - lastMotivationUpdate.current < 15000) return;
+
+    const timeout = window.setTimeout(() => {
+      setMotivation(getLocalMotivation(pending));
+      lastMotivationPending.current = pending;
+      lastMotivationUpdate.current = Date.now();
+    }, 2000);
+
+    return () => window.clearTimeout(timeout);
   }, [todos]);
 
   // Voice recognition init (native plugin on mobile, Web Speech on browser)
