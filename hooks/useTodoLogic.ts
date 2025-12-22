@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } fro
 import { Todo, Template, Priority, Category } from '../types';
 import { getSmartMotivation, generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
 import { triggerHaptic, sendNudge, requestNotificationPermission } from '../services/notificationService';
+import { getStoredApiKey } from '../services/apiKeyService';
 
 export const useTodoLogic = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -39,7 +40,13 @@ export const useTodoLogic = () => {
       // `process.env.API_KEY`/`process.env.GEMINI_API_KEY` from `.env.local`.
       // This keeps AI features usable outside AI Studio.
       const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
-      setHasApiKey(Boolean(envKey));
+      if (envKey) {
+        setHasApiKey(true);
+        return;
+      }
+
+      const stored = await getStoredApiKey();
+      setHasApiKey(Boolean(stored));
     };
     checkKey();
   }, []);

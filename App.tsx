@@ -10,6 +10,7 @@ import { ApiKeyModal } from './components/modals/ApiKeyModal';
 import { LibraryModal } from './components/modals/LibraryModal';
 import { ReviewModal } from './components/modals/ReviewModal';
 import { triggerHaptic } from './services/notificationService';
+import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 
 // Refactored Modular Components
 import { Header } from './components/layout/Header';
@@ -44,6 +45,15 @@ const App: React.FC = () => {
   const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
 
   const handleConnectKey = async () => {
+    const maybeKey = await promptForApiKey();
+    if (maybeKey) {
+      await setStoredApiKey(maybeKey);
+      setHasApiKey(true);
+      setIsKeyModalOpen(false);
+      setAiError(null);
+      return;
+    }
+
     if (window.aistudio) {
       triggerHaptic('medium');
       await window.aistudio.openSelectKey();

@@ -1,5 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { getStoredApiKey } from './apiKeyService';
 
 /**
  * 201 IQ Retry Wrapper: Handles rate limiting (429) with exponential backoff.
@@ -8,8 +9,13 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
   let retries = 0;
   
   while (true) {
-    // Instantiate a fresh client right before the call to pick up the latest selected key
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Instantiate a fresh client right before the call to pick up the latest selected key.
+    // Order: env (web/local dev) -> stored key (mobile BYOK).
+    const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
+    const storedKey = envKey ? '' : await getStoredApiKey();
+    const apiKey = (envKey || storedKey || '').trim();
+
+    const ai = new GoogleGenAI({ apiKey });
     
     try {
       return await fn(ai);
