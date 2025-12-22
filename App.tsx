@@ -47,6 +47,13 @@ const App: React.FC = () => {
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
+  const [sectionVisibleCounts, setSectionVisibleCounts] = useState<Record<string, number>>({});
+  const [completedSectionsOpen, setCompletedSectionsOpen] = useState<Record<string, boolean>>({});
+  const [completedVisibleCounts, setCompletedVisibleCounts] = useState<Record<string, number>>({});
+
+  const SECTION_INITIAL = 10;
+  const SECTION_STEP = 10;
+  const SECTION_CAP = 50;
 
   const handleConnectKey = async () => {
     try {
@@ -115,10 +122,10 @@ const App: React.FC = () => {
     setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, subTasks: steps } : todo));
   };
 
-  const renderCategorizedList = (items: Todo[]) => {
-    type BundleNode = { type: 'bundle'; name: string; items: Todo[] };
-    const isBundleNode = (node: Todo | BundleNode): node is BundleNode => 'type' in node;
+  type BundleNode = { type: 'bundle'; name: string; items: Todo[] };
+  const isBundleNode = (node: Todo | BundleNode): node is BundleNode => 'type' in node;
 
+  const buildCategorizedNodes = (items: Todo[]) => {
     const nodes: (Todo | BundleNode)[] = [];
     const processedBundles = new Set<string>();
 
@@ -132,35 +139,37 @@ const App: React.FC = () => {
       } else nodes.push(todo);
     });
 
-    return nodes.map((node, idx) => {
-      if (isBundleNode(node)) {
-        const tmpl = templates.find(t => t.name === node.name);
-        return (
-          <TodoBundle
-            key={`bundle-${node.name}-${idx}`}
-            name={node.name}
-            items={node.items}
-            isExpanded={expandedBundles.has(node.name)}
-            onToggleExpand={() => toggleBundle(node.name)}
-            onToggleComplete={(val) => handleToggleBundleCompletion(node.name, val)}
-            onTodoToggle={handleTodoToggle}
-            onTodoDelete={handleTodoDelete}
-            onUpdateSubtasks={handleUpdateSubtasks}
-            isHigh={tmpl?.priority === 'high'}
-          />
-        );
-      }
+    return nodes;
+  };
 
+  const renderCategorizedNode = (node: Todo | BundleNode, idx: number) => {
+    if (isBundleNode(node)) {
+      const tmpl = templates.find(t => t.name === node.name);
       return (
-        <TodoCard
-          key={node.id}
-          todo={node}
-          onToggle={handleTodoToggle}
-          onDelete={handleTodoDelete}
+        <TodoBundle
+          key={`bundle-${node.name}-${idx}`}
+          name={node.name}
+          items={node.items}
+          isExpanded={expandedBundles.has(node.name)}
+          onToggleExpand={() => toggleBundle(node.name)}
+          onToggleComplete={(val) => handleToggleBundleCompletion(node.name, val)}
+          onTodoToggle={handleTodoToggle}
+          onTodoDelete={handleTodoDelete}
           onUpdateSubtasks={handleUpdateSubtasks}
+          isHigh={tmpl?.priority === 'high'}
         />
       );
-    });
+    }
+
+    return (
+      <TodoCard
+        key={node.id}
+        todo={node}
+        onToggle={handleTodoToggle}
+        onDelete={handleTodoDelete}
+        onUpdateSubtasks={handleUpdateSubtasks}
+      />
+    );
   };
 
   React.useEffect(() => {
@@ -249,15 +258,152 @@ const App: React.FC = () => {
         </div>
 
         <main className="flex-1 flex flex-col gap-10">
-          {(Object.entries(groupedTodos) as [string, Todo[]][]).map(([name, items]) => items.length > 0 && (
-            <section key={name} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-              <div className="flex items-center gap-4 px-4">
-                <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400/70 shrink-0">{name}</h2>
-                <div className="h-[1px] flex-1 bg-gradient-to-r from-slate-200/50 to-transparent" />
-              </div>
-              <div className="flex flex-col gap-5 w-full">{renderCategorizedList(items)}</div>
-            </section>
-          ))}
+          {(Object.entries(groupedTodos) as [string, Todo[]][]).map(([name, items]) => {
+            if (items.length === 0) return null;
+            const nodes = buildCategorizedNodes(items);
+
+            const activeNodes: (Todo | BundleNode)[] = [];
+            const completedNodes: (Todo | BundleNode)[] = [];
+            for (const node of nodes) {
+              if (isBundleNode(node)) {
+                const isBundleComplete = node.items.length > 0 && node.items.every(t => t.completed);
+                if (isBundleComplete) completedNodes.push(node);
+                else activeNodes.push(node);
+              } else {
+                if (node.completed) completedNodes.push(node);
+                else activeNodes.push(node);
+              }
+            }
+
+            const totalActive = activeNodes.length;
+            const requestedActive = sectionVisibleCounts[name] ?? SECTION_INITIAL;
+            const visibleActive = Math.min(requestedActive, totalActive, SECTION_CAP);
+            const canShowMoreActive = visibleActive < totalActive && visibleActive < SECTION_CAP;
+            const isActiveCapped = visibleActive >= SECTION_CAP && totalActive > SECTION_CAP;
+            const canCollapseActive = visibleActive > SECTION_INITIAL;
+
+            const totalCompleted = completedNodes.length;
+            const completedOpen = completedSectionsOpen[name] ?? false;
+            const requestedCompleted = completedVisibleCounts[name] ?? SECTION_INITIAL;
+            const visibleCompleted = Math.min(requestedCompleted, totalCompleted, SECTION_CAP);
+            const canShowMoreCompleted = visibleCompleted < totalCompleted && visibleCompleted < SECTION_CAP;
+            const isCompletedCapped = visibleCompleted >= SECTION_CAP && totalCompleted > SECTION_CAP;
+            const canCollapseCompleted = visibleCompleted > SECTION_INITIAL;
+
+            return (
+              <section key={name} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                <div className="flex items-center gap-4 px-4">
+                  <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400/70 shrink-0">
+                    {name}
+                    {name === 'Today' ? ` (${items.filter(t => !t.completed).length})` : ''}
+                  </h2>
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-slate-200/50 to-transparent" />
+                </div>
+
+                <div className="flex flex-col gap-5 w-full">{activeNodes.slice(0, visibleActive).map(renderCategorizedNode)}</div>
+
+                {(canShowMoreActive || isActiveCapped || canCollapseActive) && (
+                  <div className="px-4 flex flex-col gap-3">
+                    {canShowMoreActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSectionVisibleCounts(prev => ({
+                            ...prev,
+                            [name]: Math.min((prev[name] ?? SECTION_INITIAL) + SECTION_STEP, SECTION_CAP)
+                          }));
+                          triggerHaptic('light');
+                        }}
+                        className="w-full py-3 rounded-2xl bg-indigo-600 text-white shadow-lg text-[11px] font-black uppercase tracking-[0.25em] curvy-btn"
+                      >
+                        Show {Math.min(SECTION_STEP, totalActive - visibleActive)} more
+                      </button>
+                    )}
+
+                    {canCollapseActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSectionVisibleCounts(prev => ({ ...prev, [name]: SECTION_INITIAL }));
+                          triggerHaptic('light');
+                        }}
+                        className="w-full py-3 rounded-2xl bg-slate-800 text-white shadow-lg text-[11px] font-black uppercase tracking-[0.25em] curvy-btn"
+                      >
+                        Show less
+                      </button>
+                    )}
+
+                    {isActiveCapped && !canShowMoreActive && (
+                      <div className="w-full py-3 rounded-2xl bg-white/30 border border-white/40 text-slate-400 text-[11px] font-black uppercase tracking-[0.25em] text-center">
+                        Showing {SECTION_CAP} of {totalActive}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {totalCompleted > 0 && (
+                  <div className="px-4 flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompletedSectionsOpen(prev => ({ ...prev, [name]: !(prev[name] ?? false) }));
+                        triggerHaptic('light');
+                      }}
+                      className="w-full py-3 rounded-2xl bg-white/40 border border-white/50 text-slate-600 text-[11px] font-black uppercase tracking-[0.25em] curvy-btn"
+                      aria-expanded={completedOpen}
+                    >
+                      {completedOpen ? `Hide completed (${totalCompleted})` : `Completed (${totalCompleted})`}
+                    </button>
+
+                    {completedOpen && (
+                      <>
+                        <div className="flex flex-col gap-5 w-full">{completedNodes.slice(0, visibleCompleted).map(renderCategorizedNode)}</div>
+
+                        {(canShowMoreCompleted || isCompletedCapped || canCollapseCompleted) && (
+                          <div className="flex flex-col gap-3">
+                            {canShowMoreCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCompletedVisibleCounts(prev => ({
+                                    ...prev,
+                                    [name]: Math.min((prev[name] ?? SECTION_INITIAL) + SECTION_STEP, SECTION_CAP)
+                                  }));
+                                  triggerHaptic('light');
+                                }}
+                                className="w-full py-3 rounded-2xl bg-indigo-600 text-white shadow-lg text-[11px] font-black uppercase tracking-[0.25em] curvy-btn"
+                              >
+                                Show {Math.min(SECTION_STEP, totalCompleted - visibleCompleted)} more
+                              </button>
+                            )}
+
+                            {canCollapseCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCompletedVisibleCounts(prev => ({ ...prev, [name]: SECTION_INITIAL }));
+                                  triggerHaptic('light');
+                                }}
+                                className="w-full py-3 rounded-2xl bg-slate-800 text-white shadow-lg text-[11px] font-black uppercase tracking-[0.25em] curvy-btn"
+                              >
+                                Show less
+                              </button>
+                            )}
+
+                            {isCompletedCapped && !canShowMoreCompleted && (
+                              <div className="w-full py-3 rounded-2xl bg-white/30 border border-white/40 text-slate-400 text-[11px] font-black uppercase tracking-[0.25em] text-center">
+                                Showing {SECTION_CAP} of {totalCompleted}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
           {todos.length === 0 && (
             <div className="text-center py-20 opacity-20 flex flex-col items-center gap-6">
               <Sun size={48} className="text-sky-300 animate-pulse" />
