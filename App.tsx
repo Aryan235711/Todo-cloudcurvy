@@ -46,21 +46,29 @@ const App: React.FC = () => {
   const [expandedBundles, setExpandedBundles] = useState<Set<string>>(new Set());
 
   const handleConnectKey = async () => {
-    const maybeKey = await promptForApiKey();
-    if (maybeKey) {
-      await setStoredApiKey(maybeKey);
-      setHasApiKey(true);
-      setIsKeyModalOpen(false);
-      setAiError(null);
-      return;
-    }
+    try {
+      const maybeKey = await promptForApiKey();
+      if (maybeKey) {
+        await setStoredApiKey(maybeKey);
+        setHasApiKey(true);
+        setIsKeyModalOpen(false);
+        setAiError(null);
+        return;
+      }
 
-    if (window.aistudio) {
-      triggerHaptic('medium');
-      await window.aistudio.openSelectKey();
-      setHasApiKey(true);
-      setIsKeyModalOpen(false);
-      setAiError(null);
+      if (window.aistudio?.openSelectKey) {
+        triggerHaptic('medium');
+        await window.aistudio.openSelectKey();
+        setHasApiKey(true);
+        setIsKeyModalOpen(false);
+        setAiError(null);
+        return;
+      }
+
+      setAiError('No key manager available. Please paste an API key manually.');
+    } catch {
+      setAiError('Failed to connect API key. Please try again.');
+      triggerHaptic('warning');
     }
   };
 
@@ -171,7 +179,7 @@ const App: React.FC = () => {
           <div className="mb-8 p-5 bg-rose-50 border border-rose-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
              <div className="p-3 bg-white rounded-2xl text-rose-500 shadow-sm"><AlertTriangle size={24} /></div>
              <p className="text-sm font-black text-rose-800 tracking-tight leading-snug">{aiError}</p>
-             <button onClick={() => setAiError(null)} className="ml-auto text-rose-300 hover:text-rose-500"><X size={20} /></button>
+             <button aria-label="Dismiss error" onClick={() => setAiError(null)} className="ml-auto text-rose-300 hover:text-rose-500"><X size={20} /></button>
           </div>
         )}
 
@@ -189,13 +197,13 @@ const App: React.FC = () => {
         />
 
         <div className="flex items-center gap-2 bg-white/30 p-2 rounded-[1.8rem] border border-white/40 overflow-x-auto no-scrollbar mb-10 w-full">
-            <button onClick={() => { setSortMode('smart'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'smart' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Smart</button>
-            <button onClick={() => { setSortMode('newest'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'newest' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Newest</button>
-            <button onClick={() => { setSortMode('priority'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'priority' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Priority</button>
+            <button aria-pressed={sortMode === 'smart'} onClick={() => { setSortMode('smart'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'smart' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Smart</button>
+            <button aria-pressed={sortMode === 'newest'} onClick={() => { setSortMode('newest'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'newest' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Newest</button>
+            <button aria-pressed={sortMode === 'priority'} onClick={() => { setSortMode('priority'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'priority' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Priority</button>
             <div className="w-[1px] h-5 bg-slate-300/40 mx-2 shrink-0" />
-            <button onClick={() => { setFilterCategory('all'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500'}`}>All</button>
+            <button aria-pressed={filterCategory === 'all'} onClick={() => { setFilterCategory('all'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500'}`}>All</button>
             {CATEGORIES.map(cat => (
-              <button key={cat.value} onClick={() => { setFilterCategory(cat.value); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === cat.value ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-500'}`}>{cat.label}</button>
+              <button aria-pressed={filterCategory === cat.value} key={cat.value} onClick={() => { setFilterCategory(cat.value); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === cat.value ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-500'}`}>{cat.label}</button>
             ))}
         </div>
 

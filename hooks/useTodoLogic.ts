@@ -29,6 +29,17 @@ export const useTodoLogic = () => {
 
   const capitalize = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 
+  const createId = () => {
+    try {
+      if (typeof crypto !== 'undefined' && 'randomUUID' in crypto && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+    } catch {
+      // ignore
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  };
+
   // API Key Check
   useEffect(() => {
     const checkKey = async () => {
@@ -119,6 +130,10 @@ export const useTodoLogic = () => {
         setInputValue(prev => (prev ? prev + ' ' + capitalize(transcript) : capitalize(transcript)));
         setIsListening(false);
       };
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+        triggerHaptic('warning');
+      };
       recognitionRef.current.onend = () => setIsListening(false);
     })();
   }, []);
@@ -170,7 +185,7 @@ export const useTodoLogic = () => {
     if (!inputValue.trim()) return;
 
     triggerHaptic(activePriority === 'high' ? 'heavy' : 'light');
-    const newId = Math.random().toString(36).substring(2, 9);
+    const newId = createId();
     const initialTodo: Todo = {
       id: newId,
       text: capitalize(inputValue.trim()),
@@ -209,7 +224,7 @@ export const useTodoLogic = () => {
     try {
       const data = await generateTemplateFromPrompt(inputValue);
       const newTemplate: Template = {
-        id: Math.random().toString(36).substring(2, 9),
+        id: createId(),
         name: capitalize(data.name),
         items: data.items.map(i => capitalize(i)),
         category: data.category as Category,
