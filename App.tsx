@@ -84,7 +84,10 @@ const App: React.FC = () => {
   };
 
   const renderCategorizedList = (items: Todo[]) => {
-    const nodes: (Todo | { type: 'bundle', name: string, items: Todo[] })[] = [];
+    type BundleNode = { type: 'bundle'; name: string; items: Todo[] };
+    const isBundleNode = (node: Todo | BundleNode): node is BundleNode => 'type' in node;
+
+    const nodes: (Todo | BundleNode)[] = [];
     const processedBundles = new Set<string>();
 
     items.forEach(todo => {
@@ -98,7 +101,7 @@ const App: React.FC = () => {
     });
 
     return nodes.map((node, idx) => {
-      if ('type' in node && node.type === 'bundle') {
+      if (isBundleNode(node)) {
         const tmpl = templates.find(t => t.name === node.name);
         return (
           <TodoBundle
@@ -115,6 +118,7 @@ const App: React.FC = () => {
           />
         );
       }
+
       return (
         <TodoCard
           key={node.id}

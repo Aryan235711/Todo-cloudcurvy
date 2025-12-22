@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } from 'react';
 import { Todo, Template, Priority, Category } from '../types';
 import { getSmartMotivation, generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
 import { triggerHaptic, sendNudge, requestNotificationPermission } from '../services/notificationService';
@@ -125,7 +125,7 @@ export const useTodoLogic = () => {
     setTimeout(() => setAiError(null), 6000);
   };
 
-  const handleAddTodo = async (e?: React.FormEvent) => {
+  const handleAddTodo = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!inputValue.trim()) return;
 
