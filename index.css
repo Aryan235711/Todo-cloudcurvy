@@ -1,7 +1,8 @@
+@import "tailwindcss";
+
 /*
   Global CSS helpers.
-  This project uses Tailwind via CDN (see index.html), but a few custom
-  animations/utilities are referenced in components.
+  Tailwind is built locally via PostCSS (required for native builds).
 */
 
 @keyframes curvy-bounce-slow {
