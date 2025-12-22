@@ -45,7 +45,7 @@ const steps = [
   {
     title: "Manifest Kits",
     subtitle: "Turn one goal into a reusable template.",
-    description: "In the main input, write a clear goal, then tap the Sparkles button to generate a Manifest Kit. You'll review the steps, deselect what you don't need, and deploy it anytime from your Manifest Vault. Example prompt: \"Plan a 7-day beginner gym routine with warmup, workouts, and rest days.\"",
+    description: "Write a clear goal, then tap Sparkles to generate a Manifest Kit. Review the steps, deselect what you don’t need, then Deploy from your Manifest Vault. Example: \"7-day beginner gym routine\"",
     icon: <Sparkles size={60} className="text-sky-400" />,
     color: "from-sky-50 to-white",
     accent: "bg-sky-500",
