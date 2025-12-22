@@ -97,7 +97,7 @@ const steps = [
   {
     title: "About",
     subtitle: "A note from the maker.",
-    description: "If this app helped you in a meaningful way, you can visit my Substack. A token of appreciation there helps me keep building — and it genuinely makes the hard work feel worth it.",
+    description: "If this app helped you in a meaningful way, you can visit my Substack. A token of appreciation there helps me keep building — and it genuinely makes the hard work feel worth it. ~ AlterEgo",
     icon: <Newspaper size={60} className="text-indigo-400" />,
     color: "from-indigo-50 to-white",
     accent: "bg-indigo-600",
