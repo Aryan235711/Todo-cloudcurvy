@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ShieldCheck, Database, Trash } from 'lucide-react';
+import { ShieldCheck, Database, Trash, Newspaper } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 
@@ -9,18 +9,18 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onPurge }) => {
-  const supportUrl = 'https://substack.com/@observededucerespond';
+  const substackUrl = 'https://substack.com/@observededucerespond';
 
-  const openSupport = async () => {
+  const openSubstack = async () => {
     try {
       if (Capacitor.isNativePlatform()) {
-        await Browser.open({ url: supportUrl });
+        await Browser.open({ url: substackUrl });
         return;
       }
     } catch {
       // fall back to window.open
     }
-    window.open(supportUrl, '_blank', 'noopener,noreferrer');
+    window.open(substackUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -31,10 +31,11 @@ export const Footer: React.FC<FooterProps> = ({ onPurge }) => {
       </div>
       <div className="flex flex-col items-center gap-2 mt-4">
         <button
-          onClick={() => void openSupport()}
-          className="text-[10px] font-black text-slate-400 hover:text-indigo-500 uppercase tracking-widest transition-colors curvy-btn px-4 py-2"
+          onClick={() => void openSubstack()}
+          className="text-[10px] font-black text-slate-400 hover:text-indigo-500 uppercase tracking-widest transition-colors curvy-btn px-4 py-2 flex items-center gap-2"
+          aria-label="Open Substack"
         >
-          Support AlterEgo
+          <Newspaper size={12} /> Substack
         </button>
         <button
           onClick={onPurge}

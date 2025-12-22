@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
-import { Cloud, Sparkles, ShieldCheck, ArrowRight, Check, Zap, Mic, Database, Key, ChevronLeft } from 'lucide-react';
+import { Cloud, Sparkles, ShieldCheck, ArrowRight, Check, Zap, Mic, Database, Key, ChevronLeft, Newspaper } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -91,11 +93,40 @@ const steps = [
         </div>
       </div>
     )
+  },
+  {
+    title: "About",
+    subtitle: "A note from the maker.",
+    description: "If this app helped you in a meaningful way, you can visit my Substack. A token of appreciation there helps me keep building — and it genuinely makes the hard work feel worth it.",
+    icon: <Newspaper size={60} className="text-indigo-400" />,
+    color: "from-indigo-50 to-white",
+    accent: "bg-indigo-600",
+    illustration: (
+      <div className="relative w-48 h-48 flex items-center justify-center">
+        <div className="absolute inset-0 bg-indigo-100 rounded-[3rem] -rotate-6" />
+        <div className="relative z-10 bg-white p-6 rounded-[2.6rem] curvy-shadow flex items-center justify-center text-indigo-500">
+          <Newspaper size={48} strokeWidth={2.5} />
+        </div>
+      </div>
+    )
   }
 ];
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const substackUrl = 'https://substack.com/@observededucerespond';
+
+  const openSubstack = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({ url: substackUrl });
+        return;
+      }
+    } catch {
+      // fall back
+    }
+    window.open(substackUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -113,6 +144,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const step = steps[currentStep];
+  const isAboutStep = step.title === 'About';
 
   return (
     <div className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}>
@@ -141,6 +173,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <p className="text-slate-500 font-medium leading-relaxed mb-10">
             {step.description}
           </p>
+
+          {isAboutStep && (
+            <button
+              onClick={() => void openSubstack()}
+              className="w-full bg-white/40 border border-white/60 text-slate-800 py-4 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.25em] transition-all active:scale-95 flex items-center justify-center gap-3 curvy-btn"
+              aria-label="Open Substack"
+              type="button"
+            >
+              <Newspaper size={18} /> Open Substack
+            </button>
+          )}
         </div>
       </div>
 
