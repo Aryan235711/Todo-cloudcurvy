@@ -43,6 +43,24 @@ const steps = [
     )
   },
   {
+    title: "Manifest Kits",
+    subtitle: "Turn one goal into a reusable template.",
+    description: "In the main input, write a clear goal, then tap the Sparkles button to generate a Manifest Kit. You'll review the steps, deselect what you don't need, and deploy it anytime from your Manifest Vault. Example prompt: \"Plan a 7-day beginner gym routine with warmup, workouts, and rest days.\"",
+    icon: <Sparkles size={60} className="text-sky-400" />,
+    color: "from-sky-50 to-white",
+    accent: "bg-sky-500",
+    illustration: (
+      <div className="relative w-48 h-48 flex items-center justify-center">
+        <div className="absolute inset-0 bg-sky-200/25 rounded-[3rem] animate-pulse" />
+        <div className="relative z-10 bg-white p-6 rounded-[2.6rem] curvy-shadow flex flex-col items-center gap-3">
+          <Sparkles size={40} className="text-indigo-500" />
+          <div className="w-32 h-2 bg-slate-100 rounded" />
+          <div className="w-24 h-2 bg-slate-100 rounded" />
+        </div>
+      </div>
+    )
+  },
+  {
     title: "Sustainable AI",
     subtitle: "Bring your own magic.",
     description: "CurvyCloud uses the BYOK model. Link your Gemini API key to enjoy unlimited, private AI manifestations at zero cost to us and you.",

@@ -26,3 +26,12 @@
 .urgent-pulse {
   animation: curvy-urgent-pulse 1.6s ease-in-out infinite;
 }
+
+@keyframes curvy-placeholder-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.curvy-placeholder-marquee {
+  animation: curvy-placeholder-marquee 7.5s linear infinite;
+}
