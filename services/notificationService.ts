@@ -63,7 +63,14 @@ export const requestNotificationPermission = async () => {
   return permission === 'granted';
 };
 
-export const sendNudge = async (title: string, body: string): Promise<boolean> => {
+export const sendNudge = async (
+  title: string,
+  body: string,
+  opts?: { delayMs?: number; at?: Date }
+): Promise<boolean> => {
+  const delayMs = Math.max(0, opts?.delayMs ?? 500);
+  const scheduledAt = opts?.at ?? new Date(Date.now() + delayMs);
+
   if (Capacitor.isNativePlatform()) {
     const perm = await LocalNotifications.checkPermissions();
     if (perm.display !== 'granted') return false;
@@ -71,10 +78,10 @@ export const sendNudge = async (title: string, body: string): Promise<boolean> =
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: Math.floor(Date.now() / 1000),
+          id: Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000),
           title,
           body,
-          schedule: { at: new Date(Date.now() + 500) },
+          schedule: { at: scheduledAt },
         },
       ],
     });
@@ -84,10 +91,23 @@ export const sendNudge = async (title: string, body: string): Promise<boolean> =
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
 
   try {
-    new Notification(title, {
-      body,
-      icon: '/favicon.ico',
-    });
+    if (delayMs > 0) {
+      window.setTimeout(() => {
+        try {
+          new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+          });
+        } catch {
+          // ignore
+        }
+      }, delayMs);
+    } else {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+      });
+    }
     return true;
   } catch {
     return false;
