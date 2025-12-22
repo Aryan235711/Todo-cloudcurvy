@@ -4,6 +4,57 @@ import { getStoredApiKey } from './apiKeyService';
 
 export type ApiKeyValidationResult = 'ok' | 'quota' | 'invalid' | 'error';
 
+const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+type CacheEntry<T> = { value: T; expiresAt: number };
+const MAX_CACHE_ENTRIES = 200;
+
+const cacheGet = <T>(cache: Map<string, CacheEntry<T>>, key: string): T | null => {
+  const hit = cache.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+  return hit.value;
+};
+
+const cacheSet = <T>(cache: Map<string, CacheEntry<T>>, key: string, value: T, ttlMs: number) => {
+  cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+  if (cache.size <= MAX_CACHE_ENTRIES) return;
+  // Map preserves insertion order; delete the oldest entries.
+  const toRemove = cache.size - MAX_CACHE_ENTRIES;
+  const keys = cache.keys();
+  for (let i = 0; i < toRemove; i++) {
+    const k = keys.next().value as string | undefined;
+    if (!k) break;
+    cache.delete(k);
+  }
+};
+
+const motivationCache = new Map<string, CacheEntry<string>>();
+const refineCache = new Map<
+  string,
+  CacheEntry<{ category: string; tags: string[]; isUrgent: boolean; extractedTime?: string }>
+>();
+const templateCache = new Map<
+  string,
+  CacheEntry<{ name: string; items: string[]; category: string; tags: string[] }>
+>();
+
+// Gentle throttle for background-ish calls like metadata refinement.
+const REFINE_LIMIT_PER_MIN = 5;
+const refineCallTimestamps: number[] = [];
+const canRefineNow = () => {
+  const now = Date.now();
+  while (refineCallTimestamps.length && now - refineCallTimestamps[0] > 60_000) {
+    refineCallTimestamps.shift();
+  }
+  if (refineCallTimestamps.length >= REFINE_LIMIT_PER_MIN) return false;
+  refineCallTimestamps.push(now);
+  return true;
+};
+
 export const validateApiKey = async (apiKey: string): Promise<ApiKeyValidationResult> => {
   const key = apiKey.trim();
   if (!key) return 'invalid';
@@ -58,7 +109,9 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
       if (isRateLimit && retries < maxRetries) {
         retries++;
         // Exponential backoff: 2s, 4s...
-        const delay = Math.pow(2, retries) * 1000;
+        const baseDelay = Math.pow(2, retries) * 1000;
+        const jitter = 0.8 + Math.random() * 0.4; // 0.8x - 1.2x
+        const delay = Math.round(baseDelay * jitter);
         console.warn(`Gemini Quota/Rate limit hit. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
@@ -75,6 +128,16 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
  * AI Governance: Refines category, tags, and detects Temporal Urgency.
  */
 export const refineTaskMetadata = async (text: string): Promise<{ category: string, tags: string[], isUrgent: boolean, extractedTime?: string }> => {
+  const normalized = normalizeText(text).toLowerCase();
+  const cached = cacheGet(refineCache, normalized);
+  if (cached) return cached;
+
+  // This call is non-critical; avoid hammering quota if users add lots of tasks quickly.
+  if (!canRefineNow()) {
+    if (import.meta.env.DEV) console.warn('Refine throttled; returning defaults');
+    return { category: 'other', tags: [], isUrgent: false };
+  }
+
   return callWithRetry(async (ai) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -99,7 +162,9 @@ export const refineTaskMetadata = async (text: string): Promise<{ category: stri
     });
 
     const jsonStr = response.text || '{"category": "other", "tags": [], "isUrgent": false}';
-    return JSON.parse(jsonStr);
+    const parsed = JSON.parse(jsonStr);
+    cacheSet(refineCache, normalized, parsed, 30 * 24 * 60 * 60 * 1000); // 30 days
+    return parsed;
   });
 };
 
@@ -130,6 +195,10 @@ export const getTaskBreakdown = async (taskText: string): Promise<string[]> => {
 };
 
 export const generateTemplateFromPrompt = async (prompt: string): Promise<{ name: string; items: string[]; category: string; tags: string[] }> => {
+  const normalized = normalizeText(prompt).toLowerCase();
+  const cached = cacheGet(templateCache, normalized);
+  if (cached) return cached;
+
   return callWithRetry(async (ai) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -155,17 +224,25 @@ export const generateTemplateFromPrompt = async (prompt: string): Promise<{ name
     });
 
     const jsonStr = response.text || '{"name": "Custom List", "items": [], "category": "other", "tags": []}';
-    return JSON.parse(jsonStr);
+    const parsed = JSON.parse(jsonStr);
+    cacheSet(templateCache, normalized, parsed, 24 * 60 * 60 * 1000); // 1 day
+    return parsed;
   });
 };
 
 export const getSmartMotivation = async (pendingCount: number): Promise<string> => {
+  const key = String(pendingCount);
+  const cached = cacheGet(motivationCache, key);
+  if (cached) return cached;
+
   return callWithRetry(async (ai) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Give me a short, refreshing, and encouraging one-sentence quote for someone who has ${pendingCount} tasks remaining. Keep it breezy and cool.`,
     });
 
-    return response.text?.trim() || "Let's make today beautiful!";
+    const msg = response.text?.trim() || "Let's make today beautiful!";
+    cacheSet(motivationCache, key, msg, 3 * 60 * 1000); // 3 minutes
+    return msg;
   });
 };
