@@ -110,6 +110,19 @@ const persistCaches = async () => {
   pruneExpired(templateCache);
   pruneExpired(breakdownCache);
 
+  // Limit cache sizes to prevent storage bloat (keep most recent).
+  const limitCache = (cache: Map<string, any>, max: number) => {
+    if (cache.size > max) {
+      const entries = Array.from(cache.entries());
+      cache.clear();
+      entries.slice(-max).forEach(([k, v]) => cache.set(k, v));
+    }
+  };
+  limitCache(motivationCache, 200);
+  limitCache(refineCache, 500);
+  limitCache(templateCache, 200);
+  limitCache(breakdownCache, 200);
+
   const payload: PersistedCacheShapeV2 = {
     v: 2,
     motivation: Array.from(motivationCache.entries()),

@@ -144,8 +144,10 @@ export const useTodoLogic = () => {
     // Debounce persistence to keep UI interactions instant.
     persistTimerRef.current = window.setTimeout(() => {
       try {
+        // Limit templates to last 500 to prevent storage bloat.
+        const limitedTemplates = templates.slice(-500);
         localStorage.setItem('curvycloud_todos', JSON.stringify(todos));
-        localStorage.setItem('curvycloud_templates', JSON.stringify(templates));
+        localStorage.setItem('curvycloud_templates', JSON.stringify(limitedTemplates));
       } catch {
         // ignore storage failures
       }
