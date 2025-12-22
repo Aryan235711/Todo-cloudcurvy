@@ -19,6 +19,7 @@ export const useTodoLogic = () => {
   const [hasApiKey, setHasApiKey] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [notificationHint, setNotificationHint] = useState<string | null>(null);
+  const [voiceHint, setVoiceHint] = useState<string | null>(null);
   const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [voiceMode, setVoiceMode] = useState<'native' | 'web' | 'none'>('none');
   
@@ -200,6 +201,19 @@ export const useTodoLogic = () => {
         try {
           const transcript = await startNativeVoice({ prompt: 'Speak your task' });
           if (transcript) setInputValue(prev => (prev ? prev + ' ' + capitalize(transcript) : capitalize(transcript)));
+        } catch (e: any) {
+          const code = (typeof e?.message === 'string' && e.message) ? e.message : '';
+          const alreadyShown = localStorage.getItem('curvycloud_voice_hint_shown') === 'true';
+          if (!alreadyShown) {
+            localStorage.setItem('curvycloud_voice_hint_shown', 'true');
+            if (code === 'VOICE_PERMISSION_DENIED') {
+              setVoiceHint('Enable microphone & speech permissions to use voice input.');
+            } else {
+              setVoiceHint('Voice input is unavailable right now.');
+            }
+            setTimeout(() => setVoiceHint(null), 8000);
+          }
+          triggerHaptic('warning');
         } finally {
           setIsListening(false);
         }
@@ -347,6 +361,7 @@ export const useTodoLogic = () => {
     hasApiKey, setHasApiKey,
     aiError, setAiError,
     notificationHint, setNotificationHint,
+    voiceHint, setVoiceHint,
     isMagicLoading,
     reviewingTemplate, setReviewingTemplate,
     selectedReviewIndices, setSelectedReviewIndices,

@@ -5,7 +5,8 @@ const getNativeSpeech = async () => {
   try {
     const mod = await import('@capacitor-community/speech-recognition');
     return mod.SpeechRecognition;
-  } catch {
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('Native speech plugin unavailable', e);
     return null;
   }
 };
@@ -16,7 +17,8 @@ export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
     try {
       const { available } = await nativeSpeech.available();
       return available ? 'native' : 'none';
-    } catch {
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('Native speech availability check failed', e);
       return 'none';
     }
   }
@@ -27,18 +29,31 @@ export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
 
 export const startNativeVoice = async (opts: { language?: string; prompt?: string }): Promise<string | null> => {
   const nativeSpeech = await getNativeSpeech();
-  if (!nativeSpeech) return null;
+  if (!nativeSpeech) throw new Error('VOICE_UNAVAILABLE');
 
-  const perm = await nativeSpeech.requestPermissions();
-  if (perm.speechRecognition !== 'granted') return null;
+  let perm: any;
+  try {
+    perm = await nativeSpeech.requestPermissions();
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('Voice permission request failed', e);
+    throw new Error('VOICE_PERMISSION_ERROR');
+  }
 
-  const res = await nativeSpeech.start({
-    language: opts.language || 'en-US',
-    maxResults: 1,
-    prompt: opts.prompt || 'Speak now',
-    partialResults: false,
-    popup: true,
-  });
+  if (perm?.speechRecognition !== 'granted') throw new Error('VOICE_PERMISSION_DENIED');
+
+  let res: any;
+  try {
+    res = await nativeSpeech.start({
+      language: opts.language || 'en-US',
+      maxResults: 1,
+      prompt: opts.prompt || 'Speak now',
+      partialResults: false,
+      popup: true,
+    });
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('Native speech start failed', e);
+    throw new Error('VOICE_START_FAILED');
+  }
 
   const first = res.matches?.[0];
   return first ? first.trim() : null;

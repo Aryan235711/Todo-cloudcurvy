@@ -33,6 +33,7 @@ const App: React.FC = () => {
     hasApiKey, setHasApiKey,
     aiError, setAiError,
     notificationHint, setNotificationHint,
+    voiceHint, setVoiceHint,
     isMagicLoading,
     reviewingTemplate, setReviewingTemplate,
     selectedReviewIndices, setSelectedReviewIndices,
@@ -212,6 +213,14 @@ const App: React.FC = () => {
             <div className="p-3 bg-white rounded-2xl text-amber-600 shadow-sm"><AlertTriangle size={24} /></div>
             <p className="text-sm font-black text-amber-800 tracking-tight leading-snug">{notificationHint}</p>
             <button aria-label="Dismiss notification hint" onClick={() => setNotificationHint(null)} className="ml-auto text-amber-300 hover:text-amber-600"><X size={20} /></button>
+          </div>
+        )}
+
+        {!aiError && !notificationHint && voiceHint && (
+          <div className="mb-8 p-5 bg-amber-50 border border-amber-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+            <div className="p-3 bg-white rounded-2xl text-amber-600 shadow-sm"><AlertTriangle size={24} /></div>
+            <p className="text-sm font-black text-amber-800 tracking-tight leading-snug">{voiceHint}</p>
+            <button aria-label="Dismiss voice hint" onClick={() => setVoiceHint(null)} className="ml-auto text-amber-300 hover:text-amber-600"><X size={20} /></button>
           </div>
         )}
 
