@@ -28,6 +28,7 @@ export const useTodoLogic = () => {
   
   const recognitionRef = useRef<any>(null);
   const lastMotivationUpdate = useRef<number>(0);
+  const persistTimerRef = useRef<number | null>(null);
 
   const getLocalMotivation = (pendingCount: number) => {
     if (pendingCount <= 0) return 'Clear skies. Enjoy the calm.';
@@ -133,10 +134,29 @@ export const useTodoLogic = () => {
   }, []);
 
   useEffect(() => {
-    if (!isInitialLoad) {
-      localStorage.setItem('curvycloud_todos', JSON.stringify(todos));
-      localStorage.setItem('curvycloud_templates', JSON.stringify(templates));
+    if (isInitialLoad) return;
+
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
     }
+
+    // Debounce persistence to keep UI interactions instant.
+    persistTimerRef.current = window.setTimeout(() => {
+      try {
+        localStorage.setItem('curvycloud_todos', JSON.stringify(todos));
+        localStorage.setItem('curvycloud_templates', JSON.stringify(templates));
+      } catch {
+        // ignore storage failures
+      }
+      persistTimerRef.current = null;
+    }, 250);
+
+    return () => {
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    };
   }, [todos, templates, isInitialLoad]);
 
   // Motivation (local-only; avoids burning API quota)

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Sun, AlertTriangle, X } from 'lucide-react';
 import { Todo } from './types';
 import { CATEGORIES } from './constants';
@@ -55,7 +55,7 @@ const App: React.FC = () => {
   const SECTION_STEP = 10;
   const SECTION_CAP = 50;
 
-  const handleConnectKey = async () => {
+  const handleConnectKey = useCallback(async () => {
     try {
       const maybeKey = await promptForApiKey();
       if (maybeKey) {
@@ -90,53 +90,60 @@ const App: React.FC = () => {
       setAiError('Failed to connect API key. Please try again.');
       triggerHaptic('warning');
     }
-  };
+  }, [setAiError, setHasApiKey]);
 
-  const handleToggleBundleCompletion = (bundleName: string, shouldComplete: boolean) => {
+  const handleToggleBundleCompletion = useCallback((bundleName: string, shouldComplete: boolean) => {
     const tmpl = templates.find(t => t.name === bundleName);
     if (shouldComplete) triggerHaptic(tmpl?.priority === 'high' ? 'success' : 'medium');
     setTodos(prev => prev.map(todo => todo.templateName === bundleName ? { ...todo, completed: shouldComplete } : todo));
-  };
+  }, [templates, setTodos]);
 
-  const toggleBundle = (bundleName: string) => {
+  const toggleBundle = useCallback((bundleName: string) => {
     setExpandedBundles(prev => {
       const next = new Set(prev);
       if (next.has(bundleName)) next.delete(bundleName); else next.add(bundleName);
       return next;
     });
     triggerHaptic('light');
-  };
+  }, []);
 
-  const handleTodoToggle = (id: string) => {
-    const item = todos.find(i => i.id === id);
-    if (item && !item.completed) triggerHaptic(item.priority === 'high' ? 'success' : 'medium');
-    setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo));
-  };
+  const handleTodoToggle = useCallback((id: string) => {
+    setTodos(prev => {
+      const item = prev.find(i => i.id === id);
+      if (item && !item.completed) triggerHaptic(item.priority === 'high' ? 'success' : 'medium');
+      return prev.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
+    });
+  }, [setTodos]);
 
-  const handleTodoDelete = (id: string) => {
+  const handleTodoDelete = useCallback((id: string) => {
     triggerHaptic('heavy');
     setTodos(prev => prev.filter(todo => todo.id !== id));
-  };
+  }, [setTodos]);
 
-  const handleUpdateSubtasks = (id: string, steps: string[]) => {
+  const handleUpdateSubtasks = useCallback((id: string, steps: string[]) => {
     setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, subTasks: steps } : todo));
-  };
+  }, [setTodos]);
 
   type BundleNode = { type: 'bundle'; name: string; items: Todo[] };
   const isBundleNode = (node: Todo | BundleNode): node is BundleNode => 'type' in node;
 
   const buildCategorizedNodes = (items: Todo[]) => {
     const nodes: (Todo | BundleNode)[] = [];
-    const processedBundles = new Set<string>();
+    const bundleItemsByName = new Map<string, Todo[]>();
 
     items.forEach(todo => {
-      if (todo.templateName) {
-        if (!processedBundles.has(todo.templateName)) {
-          const bundleTasks = items.filter(i => i.templateName === todo.templateName);
-          nodes.push({ type: 'bundle', name: todo.templateName, items: bundleTasks });
-          processedBundles.add(todo.templateName);
+      const bundleName = todo.templateName;
+      if (bundleName) {
+        let bucket = bundleItemsByName.get(bundleName);
+        if (!bucket) {
+          bucket = [];
+          bundleItemsByName.set(bundleName, bucket);
+          nodes.push({ type: 'bundle', name: bundleName, items: bucket });
         }
-      } else nodes.push(todo);
+        bucket.push(todo);
+      } else {
+        nodes.push(todo);
+      }
     });
 
     return nodes;
@@ -147,7 +154,7 @@ const App: React.FC = () => {
       const tmpl = templates.find(t => t.name === node.name);
       return (
         <TodoBundle
-          key={`bundle-${node.name}-${idx}`}
+          key={`bundle-${node.name}`}
           name={node.name}
           items={node.items}
           isExpanded={expandedBundles.has(node.name)}
