@@ -1,0 +1,7 @@
+{
+  "name": "CurvyCloud Todo",
+  "description": "A refreshing, lightweight todo application with a soft, curvy aesthetic and AI-powered task breakdown capabilities using Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
