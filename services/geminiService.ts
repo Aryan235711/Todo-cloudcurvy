@@ -10,10 +10,10 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
   
   while (true) {
     // Instantiate a fresh client right before the call to pick up the latest selected key.
-    // Order: env (web/local dev) -> stored key (mobile BYOK).
+    // BYOK precedence: stored (UI-provided) key -> env (dev fallback).
+    const storedKey = await getStoredApiKey();
     const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
-    const storedKey = envKey ? '' : await getStoredApiKey();
-    const apiKey = (envKey || storedKey || '').trim();
+    const apiKey = (storedKey || envKey || '').trim();
 
     const ai = new GoogleGenAI({ apiKey });
     

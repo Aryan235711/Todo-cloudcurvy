@@ -43,23 +43,29 @@ export const useTodoLogic = () => {
   // API Key Check
   useEffect(() => {
     const checkKey = async () => {
-      if (window.aistudio) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        setHasApiKey(hasKey);
+      // BYOK precedence: user-provided (stored) key should always win.
+      const stored = await getStoredApiKey();
+      if (stored) {
+        setHasApiKey(true);
         return;
       }
 
       // Local dev fallback: when running via Vite, `vite.config.ts` injects
       // `process.env.API_KEY`/`process.env.GEMINI_API_KEY` from `.env.local`.
-      // This keeps AI features usable outside AI Studio.
       const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
       if (envKey) {
         setHasApiKey(true);
         return;
       }
 
-      const stored = await getStoredApiKey();
-      setHasApiKey(Boolean(stored));
+      // AI Studio (if present) is last.
+      if (window.aistudio?.hasSelectedApiKey) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+        return;
+      }
+
+      setHasApiKey(false);
     };
     checkKey();
   }, []);
