@@ -15,10 +15,11 @@ const MAX_CACHE_ENTRIES = {
   template: 80,
 } as const;
 
-const PERSIST_KEY = 'curvycloud_ai_cache_v1';
+const PERSIST_KEY_V2 = 'curvycloud_ai_cache_v2';
+const PERSIST_KEY_V1 = 'curvycloud_ai_cache_v1';
 
-type PersistedCacheShape = {
-  v: 1;
+type PersistedCacheShapeV2 = {
+  v: 2;
   motivation: Array<[string, CacheEntry<string>]>;
   refine: Array<[string, CacheEntry<{ category: string; tags: string[]; isUrgent: boolean; extractedTime?: string }>]>;
   template: Array<[string, CacheEntry<{ name: string; items: string[]; category: string; tags: string[] }>]>
@@ -105,15 +106,15 @@ const persistCaches = async () => {
   pruneExpired(refineCache);
   pruneExpired(templateCache);
 
-  const payload: PersistedCacheShape = {
-    v: 1,
+  const payload: PersistedCacheShapeV2 = {
+    v: 2,
     motivation: Array.from(motivationCache.entries()),
     refine: Array.from(refineCache.entries()),
     template: Array.from(templateCache.entries()),
   };
 
   try {
-    await storageSet(PERSIST_KEY, JSON.stringify(payload));
+    await storageSet(PERSIST_KEY_V2, JSON.stringify(payload));
   } catch (e) {
     if (import.meta.env.DEV) console.warn('Failed to persist AI cache', e);
   }
@@ -123,14 +124,41 @@ const ensurePersistentLoaded = async () => {
   if (persistentLoaded) return;
   persistentLoaded = true;
   try {
-    const raw = await storageGet(PERSIST_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as PersistedCacheShape;
-    if (!parsed || parsed.v !== 1) return;
-
-    for (const [k, v] of parsed.motivation || []) motivationCache.set(k, v);
-    for (const [k, v] of parsed.refine || []) refineCache.set(k, v);
-    for (const [k, v] of parsed.template || []) templateCache.set(k, v);
+    const rawV2 = await storageGet(PERSIST_KEY_V2);
+    if (rawV2) {
+      const parsed = JSON.parse(rawV2) as PersistedCacheShapeV2;
+      if (parsed?.v === 2) {
+        for (const [k, v] of parsed.motivation || []) motivationCache.set(k, v);
+        for (const [k, v] of parsed.refine || []) refineCache.set(k, v);
+        for (const [k, v] of parsed.template || []) templateCache.set(k, v);
+      }
+    } else {
+      // Migrate legacy v1 cache into v2 under a neutral scope to avoid mixing with keyed caches.
+      const rawV1 = await storageGet(PERSIST_KEY_V1);
+      if (rawV1) {
+        const legacy = JSON.parse(rawV1) as any;
+        if (legacy?.v === 1) {
+          for (const [k, v] of (legacy.motivation || []) as Array<[string, CacheEntry<string>]>) {
+            motivationCache.set(`legacy:${k}`, v);
+          }
+          for (
+            const [k, v] of (legacy.refine || []) as Array<
+              [string, CacheEntry<{ category: string; tags: string[]; isUrgent: boolean; extractedTime?: string }>]
+            >
+          ) {
+            refineCache.set(`legacy:${k}`, v);
+          }
+          for (
+            const [k, v] of (legacy.template || []) as Array<
+              [string, CacheEntry<{ name: string; items: string[]; category: string; tags: string[] }>]
+            >
+          ) {
+            templateCache.set(`legacy:${k}`, v);
+          }
+          await persistCaches();
+        }
+      }
+    }
 
     pruneExpired(motivationCache);
     pruneExpired(refineCache);
@@ -143,6 +171,51 @@ const ensurePersistentLoaded = async () => {
   } catch (e) {
     if (import.meta.env.DEV) console.warn('Failed to load AI cache', e);
   }
+};
+
+const fingerprintCache = new Map<string, string>();
+
+const fnv1a = (input: string) => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
+
+const sha256Hex8 = async (input: string): Promise<string> => {
+  try {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const bytes = new TextEncoder().encode(input);
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const arr = Array.from(new Uint8Array(digest));
+      const hex = arr.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hex.slice(0, 8);
+    }
+  } catch {
+    // ignore
+  }
+  return fnv1a(input);
+};
+
+const resolveApiKey = async (): Promise<string> => {
+  const storedKey = await getStoredApiKey();
+  const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
+  return (storedKey || envKey || '').trim();
+};
+
+const getKeyScope = async (): Promise<string> => {
+  const apiKey = await resolveApiKey();
+  if (!apiKey) return 'nokey';
+
+  const cached = fingerprintCache.get(apiKey);
+  if (cached) return cached;
+
+  const fp = await sha256Hex8(apiKey);
+  const scope = `k:${fp}`;
+  fingerprintCache.set(apiKey, scope);
+  return scope;
 };
 
 const inflightMotivation = new Map<string, Promise<string>>();
@@ -199,9 +272,7 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
   while (true) {
     // Instantiate a fresh client right before the call to pick up the latest selected key.
     // BYOK precedence: stored (UI-provided) key -> env (dev fallback).
-    const storedKey = await getStoredApiKey();
-    const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
-    const apiKey = (storedKey || envKey || '').trim();
+    const apiKey = await resolveApiKey();
 
     const ai = new GoogleGenAI({ apiKey });
     
@@ -237,10 +308,12 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
 export const refineTaskMetadata = async (text: string): Promise<{ category: string, tags: string[], isUrgent: boolean, extractedTime?: string }> => {
   await ensurePersistentLoaded();
   const normalized = normalizeText(text).toLowerCase();
-  const cached = cacheGet(refineCache, normalized);
+  const scope = await getKeyScope();
+  const cacheKey = `${scope}:refine:${normalized}`;
+  const cached = cacheGet(refineCache, cacheKey);
   if (cached) return cached;
 
-  const existing = inflightRefine.get(normalized);
+  const existing = inflightRefine.get(cacheKey);
   if (existing) return existing;
 
   // This call is non-critical; avoid hammering quota if users add lots of tasks quickly.
@@ -274,16 +347,16 @@ export const refineTaskMetadata = async (text: string): Promise<{ category: stri
 
     const jsonStr = response.text || '{"category": "other", "tags": [], "isUrgent": false}';
     const parsed = JSON.parse(jsonStr);
-    cacheSet(refineCache, normalized, parsed, 30 * 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.refine); // 30 days
+    cacheSet(refineCache, cacheKey, parsed, 30 * 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.refine); // 30 days
     schedulePersist();
     return parsed;
   });
 
-  inflightRefine.set(normalized, p);
+  inflightRefine.set(cacheKey, p);
   try {
     return await p;
   } finally {
-    inflightRefine.delete(normalized);
+    inflightRefine.delete(cacheKey);
   }
 };
 
@@ -316,10 +389,12 @@ export const getTaskBreakdown = async (taskText: string): Promise<string[]> => {
 export const generateTemplateFromPrompt = async (prompt: string): Promise<{ name: string; items: string[]; category: string; tags: string[] }> => {
   await ensurePersistentLoaded();
   const normalized = normalizeText(prompt).toLowerCase();
-  const cached = cacheGet(templateCache, normalized);
+  const scope = await getKeyScope();
+  const cacheKey = `${scope}:template:${normalized}`;
+  const cached = cacheGet(templateCache, cacheKey);
   if (cached) return cached;
 
-  const existing = inflightTemplate.get(normalized);
+  const existing = inflightTemplate.get(cacheKey);
   if (existing) return existing;
 
   const p = callWithRetry(async (ai) => {
@@ -348,26 +423,27 @@ export const generateTemplateFromPrompt = async (prompt: string): Promise<{ name
 
     const jsonStr = response.text || '{"name": "Custom List", "items": [], "category": "other", "tags": []}';
     const parsed = JSON.parse(jsonStr);
-    cacheSet(templateCache, normalized, parsed, 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.template); // 1 day
+    cacheSet(templateCache, cacheKey, parsed, 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.template); // 1 day
     schedulePersist();
     return parsed;
   });
 
-  inflightTemplate.set(normalized, p);
+  inflightTemplate.set(cacheKey, p);
   try {
     return await p;
   } finally {
-    inflightTemplate.delete(normalized);
+    inflightTemplate.delete(cacheKey);
   }
 };
 
 export const getSmartMotivation = async (pendingCount: number): Promise<string> => {
   await ensurePersistentLoaded();
-  const key = String(pendingCount);
-  const cached = cacheGet(motivationCache, key);
+  const scope = await getKeyScope();
+  const cacheKey = `${scope}:motivation:${pendingCount}`;
+  const cached = cacheGet(motivationCache, cacheKey);
   if (cached) return cached;
 
-  const existing = inflightMotivation.get(key);
+  const existing = inflightMotivation.get(cacheKey);
   if (existing) return existing;
 
   const p = callWithRetry(async (ai) => {
@@ -377,15 +453,15 @@ export const getSmartMotivation = async (pendingCount: number): Promise<string> 
     });
 
     const msg = response.text?.trim() || "Let's make today beautiful!";
-    cacheSet(motivationCache, key, msg, 3 * 60 * 1000, MAX_CACHE_ENTRIES.motivation); // 3 minutes
+    cacheSet(motivationCache, cacheKey, msg, 3 * 60 * 1000, MAX_CACHE_ENTRIES.motivation); // 3 minutes
     schedulePersist();
     return msg;
   });
 
-  inflightMotivation.set(key, p);
+  inflightMotivation.set(cacheKey, p);
   try {
     return await p;
   } finally {
-    inflightMotivation.delete(key);
+    inflightMotivation.delete(cacheKey);
   }
 };
