@@ -13,6 +13,7 @@ const MAX_CACHE_ENTRIES = {
   motivation: 50,
   refine: 200,
   template: 80,
+  breakdown: 200,
 } as const;
 
 const PERSIST_KEY_V2 = 'curvycloud_ai_cache_v2';
@@ -23,6 +24,7 @@ type PersistedCacheShapeV2 = {
   motivation: Array<[string, CacheEntry<string>]>;
   refine: Array<[string, CacheEntry<{ category: string; tags: string[]; isUrgent: boolean; extractedTime?: string }>]>;
   template: Array<[string, CacheEntry<{ name: string; items: string[]; category: string; tags: string[] }>]>
+  breakdown?: Array<[string, CacheEntry<string[]>]>;
 };
 
 let persistentLoaded = false;
@@ -85,6 +87,7 @@ const templateCache = new Map<
   string,
   CacheEntry<{ name: string; items: string[]; category: string; tags: string[] }>
 >();
+const breakdownCache = new Map<string, CacheEntry<string[]>>();
 
 const pruneExpired = <T>(cache: Map<string, CacheEntry<T>>) => {
   const now = Date.now();
@@ -105,12 +108,14 @@ const persistCaches = async () => {
   pruneExpired(motivationCache);
   pruneExpired(refineCache);
   pruneExpired(templateCache);
+  pruneExpired(breakdownCache);
 
   const payload: PersistedCacheShapeV2 = {
     v: 2,
     motivation: Array.from(motivationCache.entries()),
     refine: Array.from(refineCache.entries()),
     template: Array.from(templateCache.entries()),
+    breakdown: Array.from(breakdownCache.entries()),
   };
 
   try {
@@ -131,6 +136,7 @@ const ensurePersistentLoaded = async () => {
         for (const [k, v] of parsed.motivation || []) motivationCache.set(k, v);
         for (const [k, v] of parsed.refine || []) refineCache.set(k, v);
         for (const [k, v] of parsed.template || []) templateCache.set(k, v);
+        for (const [k, v] of parsed.breakdown || []) breakdownCache.set(k, v);
       }
     } else {
       // Migrate legacy v1 cache into v2 under a neutral scope to avoid mixing with keyed caches.
@@ -163,11 +169,13 @@ const ensurePersistentLoaded = async () => {
     pruneExpired(motivationCache);
     pruneExpired(refineCache);
     pruneExpired(templateCache);
+    pruneExpired(breakdownCache);
 
     // Enforce caps immediately.
     while (motivationCache.size > MAX_CACHE_ENTRIES.motivation) motivationCache.delete(motivationCache.keys().next().value);
     while (refineCache.size > MAX_CACHE_ENTRIES.refine) refineCache.delete(refineCache.keys().next().value);
     while (templateCache.size > MAX_CACHE_ENTRIES.template) templateCache.delete(templateCache.keys().next().value);
+    while (breakdownCache.size > MAX_CACHE_ENTRIES.breakdown) breakdownCache.delete(breakdownCache.keys().next().value);
   } catch (e) {
     if (import.meta.env.DEV) console.warn('Failed to load AI cache', e);
   }
@@ -221,6 +229,45 @@ const getKeyScope = async (): Promise<string> => {
 const inflightMotivation = new Map<string, Promise<string>>();
 const inflightRefine = new Map<string, Promise<{ category: string; tags: string[]; isUrgent: boolean; extractedTime?: string }>>();
 const inflightTemplate = new Map<string, Promise<{ name: string; items: string[]; category: string; tags: string[] }>>();
+const inflightBreakdown = new Map<string, Promise<string[]>>();
+
+// Circuit breaker: once quota is exhausted, pause further AI attempts.
+const COOLDOWN_KEY = 'curvycloud_ai_cooldown_until';
+let cooldownUntilMs = 0;
+let cooldownLoaded = false;
+
+const ensureCooldownLoaded = async () => {
+  if (cooldownLoaded) return;
+  cooldownLoaded = true;
+  try {
+    const raw = await storageGet(COOLDOWN_KEY);
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) cooldownUntilMs = parsed;
+  } catch {
+    // ignore
+  }
+};
+
+const setCooldown = async (untilMs: number) => {
+  cooldownUntilMs = untilMs;
+  try {
+    await storageSet(COOLDOWN_KEY, String(untilMs));
+  } catch {
+    // ignore
+  }
+};
+
+type RateLimitKind = 'quota' | 'rate_limit' | null;
+const classifyRateLimit = (e: any): RateLimitKind => {
+  const msg = ((e?.message as string) || '').toUpperCase();
+  const status = e?.status || e?.response?.status;
+
+  const mentionsQuota = msg.includes('RESOURCE_EXHAUSTED') || msg.includes('QUOTA');
+  if (mentionsQuota) return 'quota';
+
+  if (status === 429 || msg.includes(' 429') || msg.includes('429 ')) return 'rate_limit';
+  return null;
+};
 
 // Gentle throttle for background-ish calls like metadata refinement.
 const REFINE_LIMIT_PER_MIN = 5;
@@ -266,10 +313,19 @@ export const validateApiKey = async (apiKey: string): Promise<ApiKeyValidationRe
 /**
  * 201 IQ Retry Wrapper: Handles rate limiting (429) with exponential backoff.
  */
-const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries = 2): Promise<T> => {
+const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries = 1): Promise<T> => {
   let retries = 0;
   
   while (true) {
+    await ensureCooldownLoaded();
+    if (cooldownUntilMs && Date.now() < cooldownUntilMs) {
+      const err: any = new Error('AI_COOLDOWN_ACTIVE');
+      err.code = 'AI_COOLDOWN';
+      err.status = 429;
+      err.cooldownUntil = cooldownUntilMs;
+      throw err;
+    }
+
     // Instantiate a fresh client right before the call to pick up the latest selected key.
     // BYOK precedence: stored (UI-provided) key -> env (dev fallback).
     const apiKey = await resolveApiKey();
@@ -279,18 +335,22 @@ const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries 
     try {
       return await fn(ai);
     } catch (e: any) {
-      const errorMessage = (e.message || "").toUpperCase();
-      const isRateLimit = errorMessage.includes("429") || 
-                          errorMessage.includes("RESOURCE_EXHAUSTED") || 
-                          errorMessage.includes("QUOTA");
+      const kind = classifyRateLimit(e);
 
-      if (isRateLimit && retries < maxRetries) {
+      // Hard quota exhaustion: do NOT retry; set a cooldown to prevent burning more calls.
+      if (kind === 'quota') {
+        const until = Date.now() + 30 * 60 * 1000; // 30 minutes
+        await setCooldown(until);
+        throw e;
+      }
+
+      // Transient rate limiting: allow limited retries.
+      if (kind === 'rate_limit' && retries < maxRetries) {
         retries++;
-        // Exponential backoff: 2s, 4s...
         const baseDelay = Math.pow(2, retries) * 1000;
-        const jitter = 0.8 + Math.random() * 0.4; // 0.8x - 1.2x
+        const jitter = 0.8 + Math.random() * 0.4;
         const delay = Math.round(baseDelay * jitter);
-        console.warn(`Gemini Quota/Rate limit hit. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
+        console.warn(`Gemini rate limited. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -361,7 +421,18 @@ export const refineTaskMetadata = async (text: string): Promise<{ category: stri
 };
 
 export const getTaskBreakdown = async (taskText: string): Promise<string[]> => {
-  return callWithRetry(async (ai) => {
+  await ensurePersistentLoaded();
+  const normalized = normalizeText(taskText).toLowerCase();
+  const scope = await getKeyScope();
+  const cacheKey = `${scope}:breakdown:${normalized}`;
+
+  const cached = cacheGet(breakdownCache, cacheKey);
+  if (cached) return cached;
+
+  const existing = inflightBreakdown.get(cacheKey);
+  if (existing) return existing;
+
+  const p = callWithRetry(async (ai) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Break down this task into 3-5 simple, actionable sub-tasks: "${taskText}"`,
@@ -382,8 +453,18 @@ export const getTaskBreakdown = async (taskText: string): Promise<string[]> => {
 
     const jsonStr = response.text || '{"steps": []}';
     const data = JSON.parse(jsonStr);
-    return data.steps || [];
+    const steps: string[] = Array.isArray(data?.steps) ? data.steps : [];
+    cacheSet(breakdownCache, cacheKey, steps, 30 * 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.breakdown); // 30 days
+    schedulePersist();
+    return steps;
   });
+
+  inflightBreakdown.set(cacheKey, p);
+  try {
+    return await p;
+  } finally {
+    inflightBreakdown.delete(cacheKey);
+  }
 };
 
 export const generateTemplateFromPrompt = async (prompt: string): Promise<{ name: string; items: string[]; category: string; tags: string[] }> => {

@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } from 'react';
 import { Todo, Template, Priority, Category } from '../types';
-import { getSmartMotivation, generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
+import { generateTemplateFromPrompt, refineTaskMetadata } from '../services/geminiService';
 import { triggerHaptic, sendNudge } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
 import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
@@ -28,6 +28,20 @@ export const useTodoLogic = () => {
   
   const recognitionRef = useRef<any>(null);
   const lastMotivationUpdate = useRef<number>(0);
+
+  const getLocalMotivation = (pendingCount: number) => {
+    if (pendingCount <= 0) return 'Clear skies. Enjoy the calm.';
+    const pool = [
+      `One intent at a time. (${pendingCount} left)` ,
+      `Lightwork. Let’s close one. (${pendingCount} left)`,
+      `Small steps compound. (${pendingCount} left)`,
+      `Pick the easiest win first. (${pendingCount} left)`,
+      `Keep it breezy—just one more. (${pendingCount} left)`,
+    ];
+    const day = Math.floor(Date.now() / 86_400_000);
+    const idx = Math.abs((pendingCount * 31 + day * 7) % pool.length);
+    return pool[idx];
+  };
 
   const capitalize = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 
@@ -125,24 +139,18 @@ export const useTodoLogic = () => {
     }
   }, [todos, templates, isInitialLoad]);
 
-  // AI Motivation
+  // Motivation (local-only; avoids burning API quota)
   useEffect(() => {
-    const updateMotivation = async () => {
-      if (!hasApiKey) return;
-      if (Date.now() - lastMotivationUpdate.current < 15000) return;
-      try {
-        const msg = await getSmartMotivation(todos.filter(t => !t.completed).length);
-        setMotivation(msg);
-        lastMotivationUpdate.current = Date.now();
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn('Failed to update motivation', e);
-      }
-    };
+    if (Date.now() - lastMotivationUpdate.current < 15000) return;
+    const pending = todos.filter(t => !t.completed).length;
     if (todos.length > 0) {
-      const timeout = setTimeout(updateMotivation, 2000);
+      const timeout = setTimeout(() => {
+        setMotivation(getLocalMotivation(pending));
+        lastMotivationUpdate.current = Date.now();
+      }, 2000);
       return () => clearTimeout(timeout);
     }
-  }, [todos.length, hasApiKey]);
+  }, [todos]);
 
   // Voice recognition init (native plugin on mobile, Web Speech on browser)
   useEffect(() => {
@@ -241,7 +249,10 @@ export const useTodoLogic = () => {
     const status = err?.status || err?.response?.status;
     const code = err?.code || err?.error?.code;
 
-    if (status === 429 || code === 429 || upperMsg.includes('429') || upperMsg.includes('RESOURCE_EXHAUSTED') || upperMsg.includes('QUOTA')) {
+    if (code === 'AI_COOLDOWN' || upperMsg.includes('AI_COOLDOWN')) {
+      setAiError('AI is cooling down to protect your quota. Try again later.');
+      triggerHaptic('warning');
+    } else if (status === 429 || code === 429 || upperMsg.includes('429') || upperMsg.includes('RESOURCE_EXHAUSTED') || upperMsg.includes('QUOTA')) {
       setAiError("AI Quota Exhausted. Please check your Gemini plan/billing.");
       triggerHaptic('warning');
     } else if (upperMsg.includes('REQUESTED ENTITY WAS NOT FOUND')) {
