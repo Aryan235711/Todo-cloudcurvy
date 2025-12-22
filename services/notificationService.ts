@@ -4,7 +4,31 @@
  * Handles Haptic Feedback and System Notifications
  */
 
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => {
+  if (Capacitor.isNativePlatform()) {
+    switch (type) {
+      case 'light':
+        void Haptics.impact({ style: ImpactStyle.Light });
+        return;
+      case 'medium':
+        void Haptics.impact({ style: ImpactStyle.Medium });
+        return;
+      case 'heavy':
+        void Haptics.impact({ style: ImpactStyle.Heavy });
+        return;
+      case 'success':
+        void Haptics.notification({ type: NotificationType.Success });
+        return;
+      case 'warning':
+        void Haptics.notification({ type: NotificationType.Warning });
+        return;
+    }
+  }
+
   if (!('vibrate' in navigator)) return;
 
   switch (type) {
@@ -27,18 +51,45 @@ export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | '
 };
 
 export const requestNotificationPermission = async () => {
+  if (Capacitor.isNativePlatform()) {
+    const perm = await LocalNotifications.requestPermissions();
+    return perm.display === 'granted';
+  }
+
   if (!('Notification' in window)) return false;
   if (Notification.permission === 'granted') return true;
-  
+
   const permission = await Notification.requestPermission();
   return permission === 'granted';
 };
 
-export const sendNudge = (title: string, body: string) => {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  
-  new Notification(title, {
-    body,
-    icon: '/favicon.ico', // Placeholder for actual icon
-  });
+export const sendNudge = async (title: string, body: string): Promise<boolean> => {
+  if (Capacitor.isNativePlatform()) {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') return false;
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: Math.floor(Date.now() / 1000),
+          title,
+          body,
+          schedule: { at: new Date(Date.now() + 500) },
+        },
+      ],
+    });
+    return true;
+  }
+
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+
+  try {
+    new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 };

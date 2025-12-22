@@ -47,13 +47,15 @@ export const useTodoLogic = () => {
   // Neural Nudge Logic
   useEffect(() => {
     const nudgeInterval = setInterval(() => {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
       const pending = todos.filter(t => !t.completed);
       if (pending.length === 0) return;
       const staleHigh = pending.find(t => t.priority === 'high' && (!t.lastNotified || Date.now() - t.lastNotified > 7200000));
       if (staleHigh) {
-        sendNudge("Urgent Intent", `"${staleHigh.text}" is drifting. Re-center your focus.`);
-        setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
+        void (async () => {
+          const sent = await sendNudge("Urgent Intent", `"${staleHigh.text}" is drifting. Re-center your focus.`);
+          if (!sent) return;
+          setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
+        })();
       }
     }, 60000); 
     return () => clearInterval(nudgeInterval);
