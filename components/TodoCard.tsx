@@ -112,14 +112,14 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onUpdateSubtasks }: To
             onClick={handleAiBreakdown}
             disabled={aiLoading}
             className={`p-2.5 rounded-xl transition-all curvy-btn ${
-              aiLoading ? 'animate-pulse text-indigo-500 bg-indigo-50' : 'text-slate-200 hover:text-indigo-500 hover:bg-indigo-50'
+              aiLoading ? 'animate-pulse text-indigo-500 bg-indigo-50' : 'text-indigo-500 bg-indigo-50'
             }`}
           >
             <Sparkles size={22} className={aiLoading ? 'animate-spin' : ''} strokeWidth={2.5} />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onDelete(todo.id); }}
-            className="p-2.5 rounded-xl text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all curvy-btn"
+            className="p-2.5 rounded-xl text-rose-500 bg-rose-50 transition-all curvy-btn"
           >
             <Trash2 size={22} strokeWidth={2.5} />
           </button>
