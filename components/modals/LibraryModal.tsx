@@ -45,7 +45,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/10 backdrop-blur-md">
-      <div className="liquid-glass-dark w-full max-w-md h-full shadow-2xl p-6 sm:p-8 flex flex-col rounded-l-[3rem] animate-in slide-in-from-right duration-700">
+      <div className="liquid-glass-dark w-full max-w-md h-full shadow-2xl px-6 pb-[calc(var(--safe-bottom)+1.5rem)] pt-[calc(var(--safe-top)+1.5rem)] sm:p-8 flex flex-col rounded-l-[3rem] animate-in slide-in-from-right duration-700">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3"><Library className="text-indigo-500" /> Manifest Vault</h2>
           <button onClick={onClose} className="p-3 bg-white/60 rounded-xl"><X size={22} /></button>

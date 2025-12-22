@@ -22,7 +22,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ template, onClose, sel
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-sky-900/10 backdrop-blur-2xl p-0 sm:p-10 animate-in zoom-in-95 duration-500">
       <div className="liquid-glass-dark w-full h-full sm:h-auto sm:max-w-xl sm:rounded-[4rem] p-0 shadow-2xl relative flex flex-col border border-white overflow-hidden">
-        <div className="shrink-0 p-6 sm:p-12 pb-2 sm:pb-4 border-b border-white/40 bg-white/40 backdrop-blur-lg z-50">
+        <div className="shrink-0 px-6 sm:p-12 pb-2 sm:pb-4 pt-[calc(var(--safe-top)+1.5rem)] border-b border-white/40 bg-white/40 backdrop-blur-lg z-50">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Manifest Kit</h2>
             <button onClick={onClose} className="text-slate-400 bg-white/80 p-3 rounded-2xl shadow-sm"><X size={24} /></button>
@@ -48,7 +48,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ template, onClose, sel
             ))}
           </div>
         </div>
-        <div className="shrink-0 p-6 sm:p-12 pt-4 bg-gradient-to-t from-white via-white/80 to-transparent border-t border-white/20 z-50 absolute bottom-0 inset-x-0">
+        <div className="shrink-0 p-6 sm:p-12 pt-4 pb-[calc(var(--safe-bottom)+1.5rem)] bg-gradient-to-t from-white via-white/80 to-transparent border-t border-white/20 z-50 absolute bottom-0 inset-x-0">
           <div className="flex flex-col gap-4">
             <div className="liquid-glass border-white/80 p-2 rounded-[2.5rem] shadow-2xl flex items-center gap-3">
               <input type="text" placeholder="Add extra intent..." value={newItem} onChange={(e) => setNewItem(capitalize(e.target.value))} onKeyDown={(e) => e.key === 'Enter' && (onAddItem(newItem), setNewItem(''))} className="flex-1 bg-transparent text-base font-black focus:outline-none placeholder:text-slate-300 px-4 min-h-[44px]" />

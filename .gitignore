@@ -24,6 +24,7 @@ ios/App/Pods/
 ios/App/DerivedData/
 ios/App/build/
 ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 
 # Editor directories and files
 .vscode/*

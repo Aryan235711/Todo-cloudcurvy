@@ -97,11 +97,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const step = steps[currentStep];
 
   return (
-    <div className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 py-12 overflow-hidden`}>
+    <div className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}>
       {currentStep > 0 && (
         <button 
           onClick={handleBack}
-          className="absolute top-8 left-8 p-3.5 liquid-glass-dark rounded-2xl text-slate-400 hover:text-slate-600 transition-all active:scale-95 curvy-btn shadow-sm"
+          className="absolute top-[calc(var(--safe-top)+2rem)] left-8 p-3.5 liquid-glass-dark rounded-2xl text-slate-400 hover:text-slate-600 transition-all active:scale-95 curvy-btn shadow-sm"
           aria-label="Back"
         >
           <ChevronLeft size={24} />

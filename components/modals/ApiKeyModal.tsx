@@ -15,7 +15,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-xl p-4 animate-in fade-in duration-500">
       <div className="liquid-glass-dark w-full max-w-md rounded-[3rem] p-8 sm:p-12 shadow-2xl relative animate-in zoom-in-95 duration-500 border-2 border-white">
-        <button onClick={onClose} className="absolute right-6 top-6 p-3 bg-white/80 rounded-2xl text-slate-400 hover:text-slate-600 transition-all"><X size={24} /></button>
+        <button onClick={onClose} className="absolute right-6 top-[calc(var(--safe-top)+1.5rem)] p-3 bg-white/80 rounded-2xl text-slate-400 hover:text-slate-600 transition-all"><X size={24} /></button>
         <div className="flex flex-col items-center text-center gap-6">
           <div className={`p-8 rounded-[2.5rem] shadow-xl ${hasApiKey ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'} animate-bounce-slow`}>
             {hasApiKey ? <ShieldCheck size={64} strokeWidth={1.5} /> : <Unlock size={64} strokeWidth={1.5} />}
