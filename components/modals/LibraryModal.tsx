@@ -24,6 +24,17 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
     setEditTemplateData({ ...tmpl });
   };
 
+  const handleDeleteTemplate = (tmpl: Template) => {
+    const ok = confirm(`Delete “${tmpl.name}” from your Manifest Vault?`);
+    if (!ok) return;
+    setTemplates(prev => prev.filter(t => t.id !== tmpl.id));
+    if (expandedTemplateId === tmpl.id) setExpandedTemplateId(null);
+    if (editingTemplateId === tmpl.id) {
+      setEditingTemplateId(null);
+      setEditTemplateData(null);
+    }
+  };
+
   const saveTemplateEdit = () => {
     if (!editTemplateData) return;
     const sanitized: Template = {
@@ -105,6 +116,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
                       <>
                         <button onClick={() => onDeploy(tmpl)} className="flex-1 bg-sky-500 text-white py-4 rounded-[1.8rem] font-black text-xs uppercase shadow-lg flex items-center justify-center gap-2"><Play size={16} fill="currentColor" /> Deploy</button>
                         <button onClick={() => handleEditTemplate(tmpl)} className="p-4 bg-amber-50 text-amber-500 rounded-[1.8rem]"><Edit3 size={18} /></button>
+                        <button onClick={() => handleDeleteTemplate(tmpl)} className="p-4 bg-rose-50 text-rose-500 rounded-[1.8rem]" aria-label="Delete kit"><Trash2 size={18} /></button>
                       </>
                     )}
                   </div>
