@@ -41,11 +41,16 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onUpdateSubtasks }: To
     }
 
     setAiLoading(true);
-    const steps = await getTaskBreakdown(todo.text);
-    onUpdateSubtasks(todo.id, steps);
-    setAiLoading(false);
-    setIsExpanding(true);
-    triggerHaptic('success');
+    try {
+      const steps = await getTaskBreakdown(todo.text);
+      onUpdateSubtasks(todo.id, steps);
+      setIsExpanding(true);
+      triggerHaptic('success');
+    } catch {
+      triggerHaptic('warning');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleToggleAction = (e: React.MouseEvent) => {
