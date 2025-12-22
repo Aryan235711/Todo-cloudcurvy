@@ -47,6 +47,7 @@ export const useTodoLogic = () => {
   // Neural Nudge Logic
   useEffect(() => {
     const nudgeInterval = setInterval(() => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
       const pending = todos.filter(t => !t.completed);
       if (pending.length === 0) return;
       const staleHigh = pending.find(t => t.priority === 'high' && (!t.lastNotified || Date.now() - t.lastNotified > 7200000));
