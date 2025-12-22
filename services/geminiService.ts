@@ -2,6 +2,36 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { getStoredApiKey } from './apiKeyService';
 
+export type ApiKeyValidationResult = 'ok' | 'quota' | 'invalid' | 'error';
+
+export const validateApiKey = async (apiKey: string): Promise<ApiKeyValidationResult> => {
+  const key = apiKey.trim();
+  if (!key) return 'invalid';
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: key });
+    await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: 'ping',
+    });
+    return 'ok';
+  } catch (e: any) {
+    const msg = ((e?.message as string) || '').toUpperCase();
+    const status = e?.status || e?.response?.status;
+
+    if (status === 429 || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('QUOTA') || msg.includes('429')) {
+      return 'quota';
+    }
+
+    // Common invalid key shapes/messages can vary by SDK; treat 401/403 and related text as invalid.
+    if (status === 401 || status === 403 || msg.includes('API KEY') || msg.includes('UNAUTH') || msg.includes('PERMISSION')) {
+      return 'invalid';
+    }
+
+    return 'error';
+  }
+};
+
 /**
  * 201 IQ Retry Wrapper: Handles rate limiting (429) with exponential backoff.
  */

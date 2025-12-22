@@ -11,6 +11,7 @@ import { LibraryModal } from './components/modals/LibraryModal';
 import { ReviewModal } from './components/modals/ReviewModal';
 import { triggerHaptic } from './services/notificationService';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
+import { validateApiKey } from './services/geminiService';
 
 // Refactored Modular Components
 import { Header } from './components/layout/Header';
@@ -49,10 +50,20 @@ const App: React.FC = () => {
     try {
       const maybeKey = await promptForApiKey();
       if (maybeKey) {
+        setAiError('Validating API key…');
+        const validation = await validateApiKey(maybeKey);
+        if (validation === 'invalid') {
+          setHasApiKey(false);
+          setAiError('That API key looks invalid. Please paste a valid Gemini API key.');
+          triggerHaptic('warning');
+          return;
+        }
+
         await setStoredApiKey(maybeKey);
         setHasApiKey(true);
         setIsKeyModalOpen(false);
-        setAiError(null);
+        setAiError(validation === 'quota' ? 'API key saved, but quota appears exhausted on this key.' : null);
+        if (validation === 'quota') triggerHaptic('warning');
         return;
       }
 
