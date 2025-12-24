@@ -21,6 +21,14 @@ interface UserPattern {
   engagementScore: number;
   completionStreak: number;
   lastCompletionTime: number;
+  completionHistory: Array<{ time: number; hour: number; priority: string }>;
+  productivityWindows: Array<{ start: number; end: number; score: number }>;
+}
+
+interface PredictiveInsight {
+  optimalHour: number;
+  confidence: number;
+  reason: string;
 }
 
 interface NotificationContext {
@@ -38,7 +46,12 @@ class SmartScheduler {
     lastActivity: Date.now(),
     engagementScore: 0.5,
     completionStreak: 0,
-    lastCompletionTime: 0
+    lastCompletionTime: 0,
+    completionHistory: [],
+    productivityWindows: [
+      { start: 9, end: 11, score: 0.8 },
+      { start: 14, end: 16, score: 0.7 }
+    ]
   };
 
   updateActivity() {
@@ -48,7 +61,23 @@ class SmartScheduler {
 
   recordCompletion() {
     const now = Date.now();
+    const hour = new Date(now).getHours();
     const daysSinceLastCompletion = (now - this.pattern.lastCompletionTime) / (24 * 60 * 60 * 1000);
+    
+    // Update completion history
+    this.pattern.completionHistory.push({
+      time: now,
+      hour,
+      priority: 'medium' // Will be updated by caller
+    });
+    
+    // Keep only last 50 completions for analysis
+    if (this.pattern.completionHistory.length > 50) {
+      this.pattern.completionHistory = this.pattern.completionHistory.slice(-50);
+    }
+    
+    // Update productivity windows based on completion patterns
+    this.updateProductivityWindows();
     
     if (daysSinceLastCompletion <= 1.5) {
       this.pattern.completionStreak++;
@@ -71,6 +100,17 @@ class SmartScheduler {
     
     const timeSinceActivity = Date.now() - this.pattern.lastActivity;
     const baseDelay = 5 * 60 * 1000; // 5 minutes
+    
+    // Use predictive insights to adjust delay
+    const prediction = this.getPredictiveInsight();
+    if (prediction.confidence > 0.7) {
+      const currentHour = new Date().getHours();
+      const hoursUntilOptimal = prediction.optimalHour - currentHour;
+      
+      if (hoursUntilOptimal > 0 && hoursUntilOptimal <= 4) {
+        return Math.min(hoursUntilOptimal * 60 * 60 * 1000, 4 * 60 * 60 * 1000);
+      }
+    }
     
     if (timeSinceActivity < 2 * 60 * 1000) return baseDelay * 3; // Recently active, wait longer
     if (timeSinceActivity > 30 * 60 * 1000) return baseDelay; // Been away, notify sooner
@@ -110,6 +150,62 @@ class SmartScheduler {
     const [title, body] = timeMessages;
 
     return { title, body };
+  }
+
+  private updateProductivityWindows() {
+    if (this.pattern.completionHistory.length < 5) return;
+    
+    const hourCounts = new Map<number, number>();
+    
+    // Count completions by hour
+    this.pattern.completionHistory.forEach(completion => {
+      const count = hourCounts.get(completion.hour) || 0;
+      hourCounts.set(completion.hour, count + 1);
+    });
+    
+    // Find top productivity hours
+    const sortedHours = Array.from(hourCounts.entries())
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3);
+    
+    // Update productivity windows
+    this.pattern.productivityWindows = sortedHours.map(([hour, count]) => ({
+      start: hour,
+      end: hour + 1,
+      score: Math.min(1, count / this.pattern.completionHistory.length * 5)
+    }));
+  }
+
+  getPredictiveInsight(): PredictiveInsight {
+    if (this.pattern.completionHistory.length < 3) {
+      return { optimalHour: 10, confidence: 0.3, reason: 'Insufficient data' };
+    }
+    
+    const currentHour = new Date().getHours();
+    const recentCompletions = this.pattern.completionHistory.slice(-10);
+    
+    // Find most common completion hour in recent history
+    const hourFrequency = new Map<number, number>();
+    recentCompletions.forEach(completion => {
+      const count = hourFrequency.get(completion.hour) || 0;
+      hourFrequency.set(completion.hour, count + 1);
+    });
+    
+    const mostCommonHour = Array.from(hourFrequency.entries())
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    if (!mostCommonHour) {
+      return { optimalHour: currentHour + 1, confidence: 0.4, reason: 'No clear pattern' };
+    }
+    
+    const [hour, frequency] = mostCommonHour;
+    const confidence = Math.min(0.9, frequency / recentCompletions.length);
+    
+    return {
+      optimalHour: hour,
+      confidence,
+      reason: `${frequency}/${recentCompletions.length} recent completions at ${hour}:00`
+    };
   }
 }
 
@@ -308,10 +404,18 @@ export const getNotificationStats = () => ({
 });
 export const recordTaskCompletion = (priority: 'low' | 'medium' | 'high' = 'medium') => {
   scheduler.recordCompletion();
+  
+  // Update the priority in the most recent completion
+  if (scheduler['pattern'].completionHistory.length > 0) {
+    const lastIndex = scheduler['pattern'].completionHistory.length - 1;
+    scheduler['pattern'].completionHistory[lastIndex].priority = priority;
+  }
+  
   analytics.track('task_completed', { 
     priority, 
     newStreak: scheduler['pattern'].completionStreak,
-    engagementScore: scheduler['pattern'].engagementScore 
+    engagementScore: scheduler['pattern'].engagementScore,
+    predictiveInsight: scheduler.getPredictiveInsight()
   });
 };
 
@@ -331,3 +435,48 @@ export const getCompletionStats = () => ({
   lastCompletion: scheduler['pattern'].lastCompletionTime,
   engagementScore: scheduler['pattern'].engagementScore
 });
+export const getPredictiveInsights = () => {
+  const insight = scheduler.getPredictiveInsight();
+  const windows = scheduler['pattern'].productivityWindows;
+  const history = scheduler['pattern'].completionHistory;
+  
+  return {
+    nextOptimalHour: insight.optimalHour,
+    confidence: insight.confidence,
+    reason: insight.reason,
+    productivityWindows: windows,
+    completionCount: history.length,
+    averageCompletionHour: history.length > 0 
+      ? Math.round(history.reduce((sum, c) => sum + c.hour, 0) / history.length)
+      : null
+  };
+};
+
+export const scheduleOptimalNotification = async (
+  context: NotificationContext
+): Promise<boolean> => {
+  const insight = scheduler.getPredictiveInsight();
+  const currentHour = new Date().getHours();
+  
+  let optimalDelay = 5 * 60 * 1000; // Default 5 minutes
+  
+  if (insight.confidence > 0.6) {
+    const hoursUntilOptimal = insight.optimalHour - currentHour;
+    if (hoursUntilOptimal > 0 && hoursUntilOptimal <= 6) {
+      optimalDelay = hoursUntilOptimal * 60 * 60 * 1000;
+    }
+  }
+  
+  analytics.track('predictive_notification_scheduled', {
+    currentHour,
+    optimalHour: insight.optimalHour,
+    confidence: insight.confidence,
+    delayHours: optimalDelay / (60 * 60 * 1000)
+  });
+  
+  return sendNudge('Optimal Time Alert', 'Perfect timing for productivity!', {
+    delayMs: optimalDelay,
+    smart: true,
+    context
+  });
+};
