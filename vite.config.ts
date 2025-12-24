@@ -3,7 +3,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+    // Fix: Use 'VITE_' prefix to avoid exposing all env variables
+    const env = loadEnv(mode, '.', 'VITE_');
     // Never embed a developer's personal API key into a production build.
     // BYOK keys should be provided by the user at runtime (stored on-device).
     const embeddedKey = mode === 'development' ? (env.GEMINI_API_KEY || '') : '';

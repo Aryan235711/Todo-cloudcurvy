@@ -32,7 +32,8 @@ export const TodoInput: React.FC<TodoInputProps> = ({
   const canVoice = voiceMode !== 'none';
   const [isFocused, setIsFocused] = useState(false);
   const showPlaceholder = !inputValue.trim() && !isFocused;
-  const placeholderText = showPlaceholder ? '' : 'Manifest a template…';
+  // Fix: Show placeholder when input is empty and not focused
+  const placeholderText = showPlaceholder ? 'Manifest a template…' : '';
 
   return (
     <div className="liquid-glass rounded-[2.5rem] p-4 sm:p-5 curvy-shadow mb-10 sticky top-4 z-40 w-full flex flex-col gap-4">
