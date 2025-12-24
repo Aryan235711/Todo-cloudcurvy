@@ -14,6 +14,47 @@ const analytics = {
   }
 };
 
+interface UserPattern {
+  activeHours: { start: number; end: number };
+  quietHours: { start: number; end: number };
+  lastActivity: number;
+  engagementScore: number;
+}
+
+class SmartScheduler {
+  private pattern: UserPattern = {
+    activeHours: { start: 9, end: 17 },
+    quietHours: { start: 22, end: 7 },
+    lastActivity: Date.now(),
+    engagementScore: 0.5
+  };
+
+  updateActivity() {
+    this.pattern.lastActivity = Date.now();
+    this.pattern.engagementScore = Math.min(1, this.pattern.engagementScore + 0.1);
+  }
+
+  isQuietTime(): boolean {
+    const hour = new Date().getHours();
+    const { start, end } = this.pattern.quietHours;
+    return start > end ? (hour >= start || hour < end) : (hour >= start && hour < end);
+  }
+
+  getOptimalDelay(): number {
+    if (this.isQuietTime()) return 8 * 60 * 60 * 1000; // 8 hours
+    
+    const timeSinceActivity = Date.now() - this.pattern.lastActivity;
+    const baseDelay = 5 * 60 * 1000; // 5 minutes
+    
+    if (timeSinceActivity < 2 * 60 * 1000) return baseDelay * 3; // Recently active, wait longer
+    if (timeSinceActivity > 30 * 60 * 1000) return baseDelay; // Been away, notify sooner
+    
+    return baseDelay * 2;
+  }
+}
+
+const scheduler = new SmartScheduler();
+
 export const registerPushNotifications = async () => {
   if (!Capacitor.isNativePlatform()) return;
   
@@ -60,6 +101,8 @@ export const registerPushNotifications = async () => {
 };
 
 export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => {
+  scheduler.updateActivity(); // Track user interaction
+  
   if (Capacitor.isNativePlatform()) {
     switch (type) {
       case 'light':
@@ -117,9 +160,23 @@ export const requestNotificationPermission = async () => {
 export const sendNudge = async (
   title: string,
   body: string,
-  opts?: { delayMs?: number; at?: Date }
+  opts?: { delayMs?: number; at?: Date; smart?: boolean }
 ): Promise<boolean> => {
-  const delayMs = Math.max(0, opts?.delayMs ?? 500);
+  let delayMs = opts?.delayMs ?? 500;
+  
+  if (opts?.smart !== false) {
+    scheduler.updateActivity();
+    const smartDelay = scheduler.getOptimalDelay();
+    delayMs = Math.max(delayMs, smartDelay);
+    
+    analytics.track('smart_nudge_scheduled', {
+      originalDelay: opts?.delayMs ?? 500,
+      smartDelay,
+      finalDelay: delayMs,
+      isQuietTime: scheduler.isQuietTime()
+    });
+  }
+  
   const scheduledAt = opts?.at ?? new Date(Date.now() + delayMs);
 
   if (Capacitor.isNativePlatform()) {
@@ -161,3 +218,14 @@ export const sendNudge = async (
     return false;
   }
 };
+export const setQuietHours = (start: number, end: number) => {
+  scheduler['pattern'].quietHours = { start, end };
+  analytics.track('quiet_hours_updated', { start, end });
+};
+
+export const getNotificationStats = () => ({
+  isQuietTime: scheduler.isQuietTime(),
+  nextOptimalDelay: scheduler.getOptimalDelay(),
+  lastActivity: scheduler['pattern'].lastActivity,
+  engagementScore: scheduler['pattern'].engagementScore
+});
