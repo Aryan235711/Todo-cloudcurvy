@@ -19,6 +19,16 @@ interface UserPattern {
   quietHours: { start: number; end: number };
   lastActivity: number;
   engagementScore: number;
+  completionStreak: number;
+  lastCompletionTime: number;
+}
+
+interface NotificationContext {
+  priority?: 'low' | 'medium' | 'high';
+  category?: string;
+  taskCount?: number;
+  timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night';
+  userState?: 'active' | 'away' | 'focused';
 }
 
 class SmartScheduler {
@@ -26,12 +36,28 @@ class SmartScheduler {
     activeHours: { start: 9, end: 17 },
     quietHours: { start: 22, end: 7 },
     lastActivity: Date.now(),
-    engagementScore: 0.5
+    engagementScore: 0.5,
+    completionStreak: 0,
+    lastCompletionTime: 0
   };
 
   updateActivity() {
     this.pattern.lastActivity = Date.now();
     this.pattern.engagementScore = Math.min(1, this.pattern.engagementScore + 0.1);
+  }
+
+  recordCompletion() {
+    const now = Date.now();
+    const daysSinceLastCompletion = (now - this.pattern.lastCompletionTime) / (24 * 60 * 60 * 1000);
+    
+    if (daysSinceLastCompletion <= 1.5) {
+      this.pattern.completionStreak++;
+    } else {
+      this.pattern.completionStreak = 1;
+    }
+    
+    this.pattern.lastCompletionTime = now;
+    this.pattern.engagementScore = Math.min(1, this.pattern.engagementScore + 0.2);
   }
 
   isQuietTime(): boolean {
@@ -50,6 +76,40 @@ class SmartScheduler {
     if (timeSinceActivity > 30 * 60 * 1000) return baseDelay; // Been away, notify sooner
     
     return baseDelay * 2;
+  }
+
+  generateContextualMessage(context: NotificationContext): { title: string; body: string } {
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+    const isHighEngagement = this.pattern.engagementScore > 0.7;
+    const hasStreak = this.pattern.completionStreak > 2;
+
+    const messages = {
+      high: {
+        morning: isHighEngagement ? ['🔥 Ready to crush it?', 'Your high-priority task awaits'] : ['⚡ Important task ahead', 'Time to tackle the big one'],
+        afternoon: hasStreak ? ['🎯 Keep the momentum!', 'Another high-priority win?'] : ['🚀 Power through this one', 'High-impact task ready'],
+        evening: ['🌟 Finish strong today', 'One important task left'],
+        night: ['🌙 Quick win before rest?', 'Wrap up this priority task']
+      },
+      medium: {
+        morning: ['☀️ Good morning!', 'Ready for a productive task?'],
+        afternoon: isHighEngagement ? ['⚡ You\'re on fire!', 'Another task to conquer'] : ['📋 Task reminder', 'Time for the next one'],
+        evening: ['🌅 Evening progress', 'One more task to go'],
+        night: ['✨ Late night productivity?', 'Quick task before bed']
+      },
+      low: {
+        morning: ['🌱 Small step forward', 'Easy win to start the day'],
+        afternoon: ['📝 Quick task break?', 'Simple one to check off'],
+        evening: ['🎈 Light task ahead', 'Easy evening progress'],
+        night: ['💤 Simple task?', 'Quick one before sleep']
+      }
+    };
+
+    const priority = context.priority || 'medium';
+    const timeMessages = messages[priority][timeOfDay] || messages.medium.afternoon;
+    const [title, body] = timeMessages;
+
+    return { title, body };
   }
 }
 
@@ -160,14 +220,31 @@ export const requestNotificationPermission = async () => {
 export const sendNudge = async (
   title: string,
   body: string,
-  opts?: { delayMs?: number; at?: Date; smart?: boolean }
+  opts?: { delayMs?: number; at?: Date; smart?: boolean; context?: NotificationContext }
 ): Promise<boolean> => {
   let delayMs = opts?.delayMs ?? 500;
+  let finalTitle = title;
+  let finalBody = body;
   
   if (opts?.smart !== false) {
     scheduler.updateActivity();
     const smartDelay = scheduler.getOptimalDelay();
     delayMs = Math.max(delayMs, smartDelay);
+    
+    // Generate contextual content if context provided
+    if (opts?.context) {
+      const contextualMessage = scheduler.generateContextualMessage(opts.context);
+      finalTitle = contextualMessage.title;
+      finalBody = contextualMessage.body;
+      
+      analytics.track('contextual_message_generated', {
+        originalTitle: title,
+        contextualTitle: finalTitle,
+        priority: opts.context.priority,
+        engagementScore: scheduler['pattern'].engagementScore,
+        completionStreak: scheduler['pattern'].completionStreak
+      });
+    }
     
     analytics.track('smart_nudge_scheduled', {
       originalDelay: opts?.delayMs ?? 500,
@@ -187,8 +264,8 @@ export const sendNudge = async (
       notifications: [
         {
           id: Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000),
-          title,
-          body,
+          title: finalTitle,
+          body: finalBody,
           schedule: { at: scheduledAt },
         },
       ],
@@ -203,7 +280,7 @@ export const sendNudge = async (
       return new Promise(resolve => {
         window.setTimeout(() => {
           try {
-            new Notification(title, { body, icon: '/favicon.ico' });
+            new Notification(finalTitle, { body: finalBody, icon: '/favicon.ico' });
             resolve(true);
           } catch {
             resolve(false);
@@ -211,7 +288,7 @@ export const sendNudge = async (
         }, delayMs);
       });
     } else {
-      new Notification(title, { body, icon: '/favicon.ico' });
+      new Notification(finalTitle, { body: finalBody, icon: '/favicon.ico' });
       return true;
     }
   } catch {
@@ -227,5 +304,30 @@ export const getNotificationStats = () => ({
   isQuietTime: scheduler.isQuietTime(),
   nextOptimalDelay: scheduler.getOptimalDelay(),
   lastActivity: scheduler['pattern'].lastActivity,
+  engagementScore: scheduler['pattern'].engagementScore
+});
+export const recordTaskCompletion = (priority: 'low' | 'medium' | 'high' = 'medium') => {
+  scheduler.recordCompletion();
+  analytics.track('task_completed', { 
+    priority, 
+    newStreak: scheduler['pattern'].completionStreak,
+    engagementScore: scheduler['pattern'].engagementScore 
+  });
+};
+
+export const sendContextualNudge = async (
+  context: NotificationContext,
+  opts?: { delayMs?: number; at?: Date }
+): Promise<boolean> => {
+  return sendNudge('Task Reminder', 'You have a pending task', {
+    ...opts,
+    smart: true,
+    context
+  });
+};
+
+export const getCompletionStats = () => ({
+  streak: scheduler['pattern'].completionStreak,
+  lastCompletion: scheduler['pattern'].lastCompletionTime,
   engagementScore: scheduler['pattern'].engagementScore
 });
