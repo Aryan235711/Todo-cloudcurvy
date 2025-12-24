@@ -12,8 +12,8 @@ export interface Todo {
   category?: Category;
   tags?: string[];
   templateName?: string; 
-  isUrgent?: boolean; // 170 IQ: Detects time-sensitive tasks
-  extractedTime?: string; // 170 IQ: Stores the detected deadline/time
+  isUrgent?: boolean; // Indicates if the task is time-sensitive
+  extractedTime?: string; // Stores the detected deadline/time
   lastNotified?: number;
 }
 
@@ -23,7 +23,7 @@ export interface Template {
   items: string[];
   category: Category;
   tags: string[];
-  priority?: Priority; // 201 IQ: Priority logic for templates
+  priority?: Priority; // Priority logic for templates
 }
 
 export interface AIStatus {

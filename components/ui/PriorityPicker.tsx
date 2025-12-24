@@ -19,7 +19,7 @@ export const PriorityPicker: React.FC<PriorityPickerProps> = ({ activePriority, 
     <div className="flex items-center gap-1.5 bg-white/40 p-1.5 rounded-2xl border border-white/60 w-full sm:w-auto overflow-hidden">
       <span className="text-[9px] font-black uppercase text-slate-400 px-2 shrink-0">Priority</span>
       <div className="flex flex-1 sm:flex-initial gap-1">
-        {(['low', 'medium', 'high'] as Priority[]).map(p => (
+        {(Object.keys(prioritySelectionColors) as Priority[]).map(p => (
           <button
             key={p}
             type="button"

@@ -95,19 +95,22 @@ export const useTodoLogic = () => {
       if (pending.length === 0) return;
       const staleHigh = pending.find(t => t.priority === 'high' && (!t.lastNotified || Date.now() - t.lastNotified > 7200000));
       if (staleHigh) {
-        void (async () => {
-          const sent = await sendNudge("Urgent Intent", `"${staleHigh.text}" is drifting. Re-center your focus.`);
-          if (!sent) {
-            const alreadyShown = localStorage.getItem('curvycloud_notifications_hint_shown') === 'true';
-            if (!alreadyShown) {
-              localStorage.setItem('curvycloud_notifications_hint_shown', 'true');
-              setNotificationHint('Enable notifications to receive nudges.');
-              setTimeout(() => setNotificationHint(null), 8000);
-            }
-            return;
-          }
-          setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
-        })();
+            (async () => {
+              try {
+                const sent = await sendNudge("Urgent Intent", `"${staleHigh.text}" is drifting. Re-center your focus.`);
+                const alreadyShown = localStorage.getItem('curvycloud_notifications_hint_shown') === 'true';
+                if (!sent && !alreadyShown) {
+                  localStorage.setItem('curvycloud_notifications_hint_shown', 'true');
+                  setNotificationHint('Enable notifications to receive nudges.');
+                  setTimeout(() => setNotificationHint(null), 8000);
+                }
+                setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
+              } catch (error) {
+                console.error('Nudge notification failed:', error);
+                setNotificationHint('Failed to send nudge notification.');
+                setTimeout(() => setNotificationHint(null), 8000);
+              }
+            })();
       }
     }, 60000); 
     return () => clearInterval(nudgeInterval);

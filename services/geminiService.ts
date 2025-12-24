@@ -324,7 +324,7 @@ export const validateApiKey = async (apiKey: string): Promise<ApiKeyValidationRe
 };
 
 /**
- * Retry Wrapper: Handles rate limiting (429) with exponential backoff.
+ * Handles rate limiting (429) with exponential backoff.
  */
 const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries = 1): Promise<T> => {
   let retries = 0;
@@ -472,8 +472,8 @@ export const getTaskBreakdown = async (taskText: string): Promise<string[]> => {
       return steps;
     } catch (error) {
       console.error('AI breakdown failed:', error);
-      if (import.meta.env.DEV) {
-        // Optionally show a toast or error message in UI
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('ai-error', { detail: { message: 'AI breakdown failed', error } }));
       }
       return [];
     }
