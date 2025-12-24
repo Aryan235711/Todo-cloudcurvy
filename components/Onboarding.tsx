@@ -217,11 +217,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           Skip to Cloud
         </button>
       </div>
-
-      <style>{`
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
-      `}</style>
     </div>
   );
 };

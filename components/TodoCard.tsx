@@ -29,6 +29,7 @@ const formatTime = (ts: number) => {
 };
 
 export const TodoCard = memo(({ todo, onToggle, onDelete, onUpdateSubtasks }: TodoCardProps) => {
+  TodoCard.displayName = 'TodoCard';
   const [isExpanding, setIsExpanding] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
 

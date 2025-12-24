@@ -1,9 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Key, ShieldCheck, Unlock, ChevronRight, RotateCcw } from 'lucide-react';
 
 import { Capacitor } from '@capacitor/core';
-import React, { useState } from 'react';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -67,7 +66,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-white/40">
-              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-indigo-500 font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:gap-3 transition-all">
+              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-indigo-500 font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:gap-3 transition-all">
                 Learn about Free Usage <ChevronRight size={12} />
               </a>
             </div>

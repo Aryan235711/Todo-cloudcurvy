@@ -1,3 +1,23 @@
+body {
+  overscroll-behavior-y: contain;
+  background: #f8fafc;
+}
+::selection {
+  background: #a5b4fc;
+  color: #fff;
+}
+/* Added for Onboarding animate-spin-slow */
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 @import "tailwindcss";
 
 /*

@@ -18,6 +18,7 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { TodoInput } from './components/features/todo/TodoInput';
 import { TodoBundle } from './components/features/todo/TodoBundle';
+import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
 
 const App: React.FC = () => {
     const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
