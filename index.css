@@ -1,3 +1,8 @@
+@import "tailwindcss";
+/*
+  Global CSS helpers.
+  Tailwind is built locally via PostCSS (required for native builds).
+*/
 body {
   overscroll-behavior-y: contain;
   background: #f8fafc;
@@ -18,7 +23,7 @@ body {
     transform: rotate(360deg);
   }
 }
-@import "tailwindcss";
+
 
 /*
   Global CSS helpers.

@@ -1,4 +1,3 @@
-
 /**
  * Neural Nudge Service
  * Handles Haptic Feedback and System Notifications
@@ -7,6 +6,47 @@
 import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
+
+// Push notifications - only import if available
+let PushNotifications: any = null;
+try {
+  PushNotifications = require('@capacitor/push-notifications').PushNotifications;
+} catch {
+  // Push notifications package not installed
+}
+
+const analytics = {
+  track: (event: string, data: any) => {
+    console.log(`[Analytics] ${event}`, data);
+  }
+};
+
+export const registerPushNotifications = async () => {
+  if (!Capacitor.isNativePlatform() || !PushNotifications) return;
+  
+  try {
+    await PushNotifications.requestPermissions();
+    await PushNotifications.register();
+
+    PushNotifications.addListener('registration', (token: any) => {
+      analytics.track('push_token_registered', { token: token.value });
+    });
+
+    PushNotifications.addListener('registrationError', (error: any) => {
+      analytics.track('push_registration_error', { error });
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
+      analytics.track('push_received', notification);
+    });
+
+    PushNotifications.addListener('pushNotificationActionPerformed', (action: any) => {
+      analytics.track('push_action', action);
+    });
+  } catch (error) {
+    console.warn('Push notification registration failed:', error);
+  }
+};
 
 export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => {
   if (Capacitor.isNativePlatform()) {
@@ -95,10 +135,7 @@ export const sendNudge = async (
       return new Promise(resolve => {
         window.setTimeout(() => {
           try {
-            new Notification(title, {
-              body,
-              icon: '/favicon.ico',
-            });
+            new Notification(title, { body, icon: '/favicon.ico' });
             resolve(true);
           } catch {
             resolve(false);
@@ -106,10 +143,7 @@ export const sendNudge = async (
         }, delayMs);
       });
     } else {
-      new Notification(title, {
-        body,
-        icon: '/favicon.ico',
-      });
+      new Notification(title, { body, icon: '/favicon.ico' });
       return true;
     }
   } catch {

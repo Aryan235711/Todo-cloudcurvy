@@ -1,5 +1,7 @@
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { registerPushNotifications } from './services/notificationService';
 import { Sun, AlertTriangle, X } from 'lucide-react';
 import { Todo } from './types';
 import { CATEGORIES } from './constants';
@@ -21,6 +23,11 @@ import { TodoBundle } from './components/features/todo/TodoBundle';
 import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
 
 const App: React.FC = () => {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      registerPushNotifications();
+    }
+  }, []);
     const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
   const {
     todos, setTodos,
