@@ -57,6 +57,13 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onUpdateSubtasks }: To
   const handleToggleAction = (e: React.MouseEvent) => {
     e.stopPropagation();
     onToggle(todo.id);
+    
+    // Neural Nudge: Track completion for behavioral learning
+    if (!todo.completed) {
+      import('../services/notificationService').then(({ recordTaskCompletion }) => {
+        recordTaskCompletion(todo.priority);
+      });
+    }
   };
 
   return (

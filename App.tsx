@@ -1,7 +1,7 @@
 
 import React, { useCallback, useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { registerPushNotifications } from './services/notificationService';
+import { registerPushNotifications, requestNotificationPermission, triggerHaptic } from './services/notificationService';
 import { Sun, AlertTriangle, X } from 'lucide-react';
 import { Todo } from './types';
 import { CATEGORIES } from './constants';
@@ -11,7 +11,6 @@ import { useTodoLogic } from './hooks/useTodoLogic';
 import { ApiKeyModal } from './components/modals/ApiKeyModal';
 import { LibraryModal } from './components/modals/LibraryModal';
 import { ReviewModal } from './components/modals/ReviewModal';
-import { requestNotificationPermission, triggerHaptic } from './services/notificationService';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 import { validateApiKey } from './services/geminiService';
 
@@ -23,10 +22,16 @@ import { TodoBundle } from './components/features/todo/TodoBundle';
 import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
 
 const App: React.FC = () => {
+  // Initialize Neural Nudge System
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      registerPushNotifications();
-    }
+    const initializeNeuralNudge = async () => {
+      if (Capacitor.isNativePlatform()) {
+        await registerPushNotifications();
+      }
+      // Request notification permissions for smart nudges
+      await requestNotificationPermission();
+    };
+    initializeNeuralNudge();
   }, []);
     const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
   const {

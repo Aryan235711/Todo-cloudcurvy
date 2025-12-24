@@ -88,29 +88,45 @@ export const useTodoLogic = () => {
     checkKey();
   }, []);
 
-  // Neural Nudge Logic
+  // Neural Nudge Logic - Enhanced with behavioral intelligence
   useEffect(() => {
-    const nudgeInterval = setInterval(() => {
+    const nudgeInterval = setInterval(async () => {
       const pending = todos.filter(t => !t.completed);
       if (pending.length === 0) return;
+      
+      // Import neural nudge functions
+      const { sendBehavioralIntervention, sendContextualNudge, getBehavioralInsights } = await import('../services/notificationService');
+      
+      // Check for behavioral intervention needs
+      const insights = getBehavioralInsights();
+      if (insights.procrastinationRisk !== 'low') {
+        const sent = await sendBehavioralIntervention({ priority: 'high' });
+        if (sent) return; // Intervention sent, skip regular nudge
+      }
+      
+      // Regular contextual nudges for high priority tasks
       const staleHigh = pending.find(t => t.priority === 'high' && (!t.lastNotified || Date.now() - t.lastNotified > 7200000));
       if (staleHigh) {
-            (async () => {
-              try {
-                const sent = await sendNudge("Urgent Intent", `"${staleHigh.text}" is drifting. Re-center your focus.`);
-                const alreadyShown = localStorage.getItem('curvycloud_notifications_hint_shown') === 'true';
-                if (!sent && !alreadyShown) {
-                  localStorage.setItem('curvycloud_notifications_hint_shown', 'true');
-                  setNotificationHint('Enable notifications to receive nudges.');
-                  setTimeout(() => setNotificationHint(null), 8000);
-                }
-                setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
-              } catch (error) {
-                console.error('Nudge notification failed:', error);
-                setNotificationHint('Failed to send nudge notification.');
-                setTimeout(() => setNotificationHint(null), 8000);
-              }
-            })();
+        try {
+          const sent = await sendContextualNudge({ 
+            priority: staleHigh.priority,
+            category: staleHigh.category,
+            taskCount: pending.length
+          });
+          
+          const alreadyShown = localStorage.getItem('curvycloud_notifications_hint_shown') === 'true';
+          if (!sent && !alreadyShown) {
+            localStorage.setItem('curvycloud_notifications_hint_shown', 'true');
+            setNotificationHint('Enable notifications to receive smart nudges.');
+            setTimeout(() => setNotificationHint(null), 8000);
+          }
+          
+          setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
+        } catch (error) {
+          console.error('Neural nudge failed:', error);
+          setNotificationHint('Failed to send smart nudge.');
+          setTimeout(() => setNotificationHint(null), 8000);
+        }
       }
     }, 60000); 
     return () => clearInterval(nudgeInterval);
