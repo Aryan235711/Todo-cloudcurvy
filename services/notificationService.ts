@@ -47,6 +47,14 @@ interface MotivationContext {
   mood?: 'energetic' | 'focused' | 'tired' | 'stressed';
 }
 
+interface BehavioralInsight {
+  procrastinationRisk: 'low' | 'medium' | 'high';
+  interventionTiming: 'immediate' | 'gentle' | 'delayed';
+  completionProbability: number;
+  suggestedAction: string;
+  confidence: number;
+}
+
 class SmartScheduler {
   private pattern: UserPattern = {
     activeHours: { start: 9, end: 17 },
@@ -226,6 +234,43 @@ class SmartScheduler {
       optimalHour: hour,
       confidence,
       reason: `${frequency}/${recentCompletions.length} recent completions at ${hour}:00`
+    };
+  }
+
+  analyzeBehavior(): BehavioralInsight {
+    const now = Date.now();
+    const timeSinceActivity = now - this.pattern.lastActivity;
+    const daysSinceCompletion = (now - this.pattern.lastCompletionTime) / (24 * 60 * 60 * 1000);
+    
+    // Procrastination risk assessment
+    let procrastinationRisk: 'low' | 'medium' | 'high' = 'low';
+    if (daysSinceCompletion > 2) procrastinationRisk = 'high';
+    else if (daysSinceCompletion > 1 || timeSinceActivity > 4 * 60 * 60 * 1000) procrastinationRisk = 'medium';
+    
+    // Intervention timing based on engagement and risk
+    let interventionTiming: 'immediate' | 'gentle' | 'delayed' = 'gentle';
+    if (procrastinationRisk === 'high' && this.pattern.engagementScore < 0.3) interventionTiming = 'immediate';
+    else if (this.pattern.engagementScore > 0.7) interventionTiming = 'delayed';
+    
+    // Completion probability based on patterns
+    const baseProb = Math.max(0.1, this.pattern.engagementScore);
+    const streakBonus = Math.min(0.3, this.pattern.completionStreak * 0.05);
+    const riskPenalty = procrastinationRisk === 'high' ? 0.2 : procrastinationRisk === 'medium' ? 0.1 : 0;
+    const completionProbability = Math.min(0.95, baseProb + streakBonus - riskPenalty);
+    
+    // Suggested action
+    const actions = {
+      high: 'Break task into smaller steps and start immediately',
+      medium: 'Set a 15-minute timer and begin with the easiest part',
+      low: 'Continue with current momentum'
+    };
+    
+    return {
+      procrastinationRisk,
+      interventionTiming,
+      completionProbability,
+      suggestedAction: actions[procrastinationRisk],
+      confidence: Math.min(0.9, this.pattern.completionHistory.length * 0.1)
     };
   }
 
@@ -642,3 +687,60 @@ export const getMotivationStats = () => ({
   nextMotivationType: scheduler['pattern'].engagementScore > 0.8 ? 'celebration' :
                       scheduler['pattern'].engagementScore < 0.4 ? 'encouragement' : 'momentum'
 });
+
+export const getBehavioralInsights = () => {
+  const insight = scheduler.analyzeBehavior();
+  const predictive = scheduler.getPredictiveInsight();
+  
+  return {
+    procrastinationRisk: insight.procrastinationRisk,
+    interventionTiming: insight.interventionTiming,
+    completionProbability: insight.completionProbability,
+    suggestedAction: insight.suggestedAction,
+    confidence: insight.confidence,
+    nextOptimalHour: predictive.optimalHour,
+    behaviorPattern: predictive.reason
+  };
+};
+
+export const sendBehavioralIntervention = async (
+  context?: NotificationContext
+): Promise<boolean> => {
+  const behavioral = scheduler.analyzeBehavior();
+  
+  if (behavioral.procrastinationRisk === 'low') {
+    return false; // No intervention needed
+  }
+  
+  const messages = {
+    high: {
+      immediate: ['🚨 Break the cycle', 'Small action beats perfect planning'],
+      gentle: ['🎯 Gentle nudge', 'One tiny step forward?'],
+      delayed: ['⏰ When you\'re ready', 'No pressure, just progress']
+    },
+    medium: {
+      immediate: ['💪 Time to act', 'Momentum starts with one move'],
+      gentle: ['🌟 Friendly reminder', 'Ready to make progress?'],
+      delayed: ['🎈 Easy opportunity', 'Perfect time for a quick win']
+    }
+  };
+  
+  const riskLevel = behavioral.procrastinationRisk === 'high' ? 'high' : 'medium';
+  const timing = behavioral.interventionTiming;
+  const [title, body] = messages[riskLevel][timing];
+  
+  const delay = timing === 'immediate' ? 0 : timing === 'gentle' ? 2 * 60 * 1000 : 10 * 60 * 1000;
+  
+  analytics.track('behavioral_intervention', {
+    risk: behavioral.procrastinationRisk,
+    timing: behavioral.interventionTiming,
+    probability: behavioral.completionProbability,
+    confidence: behavioral.confidence
+  });
+  
+  return sendNudge(title, body, {
+    delayMs: delay,
+    smart: false, // Override smart scheduling for interventions
+    context: { ...context, priority: 'high' }
+  });
+};
