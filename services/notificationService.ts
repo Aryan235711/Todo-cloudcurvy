@@ -39,6 +39,14 @@ interface NotificationContext {
   userState?: 'active' | 'away' | 'focused';
 }
 
+interface MotivationContext {
+  streak: number;
+  engagement: number;
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+  priority: 'low' | 'medium' | 'high';
+  mood?: 'energetic' | 'focused' | 'tired' | 'stressed';
+}
+
 class SmartScheduler {
   private pattern: UserPattern = {
     activeHours: { start: 9, end: 17 },
@@ -124,6 +132,19 @@ class SmartScheduler {
     const isHighEngagement = this.pattern.engagementScore > 0.7;
     const hasStreak = this.pattern.completionStreak > 2;
 
+    // Use motivation engine for enhanced messaging
+    const motivationContext: MotivationContext = {
+      streak: this.pattern.completionStreak,
+      engagement: this.pattern.engagementScore,
+      timeOfDay: timeOfDay as 'morning' | 'afternoon' | 'evening' | 'night',
+      priority: context.priority || 'medium'
+    };
+
+    // 70% chance to use motivational message, 30% contextual
+    if (Math.random() > 0.3) {
+      return this.generateMotivationalMessage(motivationContext);
+    }
+
     const messages = {
       high: {
         morning: isHighEngagement ? ['🔥 Ready to crush it?', 'Your high-priority task awaits'] : ['⚡ Important task ahead', 'Time to tackle the big one'],
@@ -206,6 +227,110 @@ class SmartScheduler {
       confidence,
       reason: `${frequency}/${recentCompletions.length} recent completions at ${hour}:00`
     };
+  }
+
+  generateMotivationalMessage(context: MotivationContext): { title: string; body: string } {
+    const motivationLibrary = {
+      streak: {
+        low: [
+          ['🌟 Every step counts', 'Small progress is still progress'],
+          ['💪 Building momentum', 'You\'re creating positive habits'],
+          ['🎯 Stay consistent', 'Consistency beats perfection']
+        ],
+        medium: [
+          ['🔥 You\'re on a roll!', `${context.streak} tasks completed - keep going!`],
+          ['⚡ Momentum building', 'Your consistency is paying off'],
+          ['🚀 Streak power!', 'You\'re in the zone - don\'t stop now']
+        ],
+        high: [
+          ['🏆 Unstoppable force!', `${context.streak} task streak - you\'re crushing it!`],
+          ['👑 Productivity champion', 'Your dedication is inspiring'],
+          ['🎖️ Master of momentum', 'This streak shows your true potential']
+        ]
+      },
+      timeOfDay: {
+        morning: [
+          ['☀️ Fresh start energy', 'Morning minds are sharpest'],
+          ['🌅 Dawn of productivity', 'Early action sets the tone'],
+          ['🐦 Early bird advantage', 'You\'re ahead of the game']
+        ],
+        afternoon: [
+          ['⚡ Afternoon power', 'Peak performance time'],
+          ['🎯 Midday momentum', 'Keep the energy flowing'],
+          ['🔋 Recharged and ready', 'Second wind incoming']
+        ],
+        evening: [
+          ['🌟 Evening excellence', 'Finish strong today'],
+          ['🎭 Prime time focus', 'Your best work happens now'],
+          ['🌆 Golden hour productivity', 'End the day with purpose']
+        ],
+        night: [
+          ['🌙 Night owl power', 'Quiet hours, deep focus'],
+          ['✨ Midnight momentum', 'When others rest, you excel'],
+          ['🦉 Late night clarity', 'Your mind is sharp in stillness']
+        ]
+      },
+      priority: {
+        high: [
+          ['🎯 Mission critical', 'This task changes everything'],
+          ['⚡ High impact ahead', 'Your future self will thank you'],
+          ['🚀 Game changer time', 'Big results need bold action']
+        ],
+        medium: [
+          ['📈 Steady progress', 'Building toward your goals'],
+          ['⚖️ Balanced approach', 'Important work deserves attention'],
+          ['🎪 Show time', 'Ready to make it happen']
+        ],
+        low: [
+          ['🌱 Small seeds grow', 'Every task has value'],
+          ['🎈 Light and easy', 'Quick wins build confidence'],
+          ['☁️ Gentle progress', 'Smooth sailing ahead']
+        ]
+      },
+      engagement: {
+        high: [
+          ['🔥 You\'re unstoppable!', 'This energy is contagious'],
+          ['⚡ Lightning focus', 'Channel this power wisely'],
+          ['🚀 Peak performance', 'You\'re in the flow state']
+        ],
+        medium: [
+          ['💪 Steady strength', 'Consistent effort wins'],
+          ['🎯 Focused energy', 'You\'ve got this handled'],
+          ['⚖️ Balanced power', 'Sustainable excellence']
+        ],
+        low: [
+          ['🌱 Gentle start', 'Small steps lead to big wins'],
+          ['☁️ Easy does it', 'Progress over perfection'],
+          ['🎈 Light momentum', 'Build energy as you go']
+        ]
+      }
+    };
+
+    // Select motivation category based on context
+    let selectedMessages: string[][];
+    
+    if (context.streak > 5) {
+      selectedMessages = motivationLibrary.streak.high;
+    } else if (context.streak > 2) {
+      selectedMessages = motivationLibrary.streak.medium;
+    } else if (context.engagement > 0.8) {
+      selectedMessages = motivationLibrary.engagement.high;
+    } else if (context.engagement < 0.4) {
+      selectedMessages = motivationLibrary.engagement.low;
+    } else {
+      selectedMessages = motivationLibrary.timeOfDay[context.timeOfDay];
+    }
+
+    // Add priority-specific messages for high-priority tasks
+    if (context.priority === 'high' && Math.random() > 0.5) {
+      selectedMessages = [...selectedMessages, ...motivationLibrary.priority.high];
+    }
+
+    // Select random message from appropriate category
+    const randomMessage = selectedMessages[Math.floor(Math.random() * selectedMessages.length)];
+    const [title, body] = randomMessage;
+
+    return { title, body };
   }
 }
 
@@ -480,3 +605,40 @@ export const scheduleOptimalNotification = async (
     context
   });
 };
+export const generateMotivationalNudge = async (
+  context?: { priority?: 'low' | 'medium' | 'high'; category?: string }
+): Promise<boolean> => {
+  const motivationContext: MotivationContext = {
+    streak: scheduler['pattern'].completionStreak,
+    engagement: scheduler['pattern'].engagementScore,
+    timeOfDay: (() => {
+      const hour = new Date().getHours();
+      return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+    })() as 'morning' | 'afternoon' | 'evening' | 'night',
+    priority: context?.priority || 'medium'
+  };
+
+  const message = scheduler.generateMotivationalMessage(motivationContext);
+  
+  analytics.track('motivational_nudge_generated', {
+    streak: motivationContext.streak,
+    engagement: motivationContext.engagement,
+    timeOfDay: motivationContext.timeOfDay,
+    priority: motivationContext.priority,
+    title: message.title
+  });
+
+  return sendNudge(message.title, message.body, {
+    smart: true,
+    context: { priority: context?.priority, category: context?.category }
+  });
+};
+
+export const getMotivationStats = () => ({
+  streak: scheduler['pattern'].completionStreak,
+  engagement: scheduler['pattern'].engagementScore,
+  motivationLevel: scheduler['pattern'].completionStreak > 5 ? 'high' : 
+                   scheduler['pattern'].completionStreak > 2 ? 'medium' : 'building',
+  nextMotivationType: scheduler['pattern'].engagementScore > 0.8 ? 'celebration' :
+                      scheduler['pattern'].engagementScore < 0.4 ? 'encouragement' : 'momentum'
+});
