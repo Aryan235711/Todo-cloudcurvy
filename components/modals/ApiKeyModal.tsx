@@ -2,15 +2,46 @@
 import React from 'react';
 import { X, Key, ShieldCheck, Unlock, ChevronRight, RotateCcw } from 'lucide-react';
 
+import { Capacitor } from '@capacitor/core';
+import React, { useState } from 'react';
+
 interface ApiKeyModalProps {
   isOpen: boolean;
   onClose: () => void;
   hasApiKey: boolean;
-  onConnect: () => Promise<void>;
+  // If `manualKey` is provided, the handler validates and stores it.
+  onConnect: (manualKey?: string | null) => Promise<void>;
 }
 
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasApiKey, onConnect }) => {
+  const [showInput, setShowInput] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!isOpen) return null;
+
+  const handlePrimary = async () => {
+    // On native platforms use the native prompt flow; on web, reveal a non-blocking input instead
+    if (Capacitor.isNativePlatform() || (window as any).aistudio?.openSelectKey) {
+      await onConnect();
+      return;
+    }
+
+    setShowInput(true);
+  };
+
+  const handleSave = async () => {
+    if (!inputValue.trim()) return;
+    setIsSaving(true);
+    try {
+      await onConnect(inputValue.trim());
+      setShowInput(false);
+      setInputValue('');
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-xl p-4 animate-in fade-in duration-500">
@@ -42,12 +73,24 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
             </div>
           </div>
           <div className="w-full flex flex-col gap-3">
-             <button onClick={onConnect} className={`w-full py-5 rounded-[2rem] font-black text-lg shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${hasApiKey ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white'}`}>
-               {hasApiKey ? <><RotateCcw size={22} /> Switch AI Key</> : <><Key size={22} /> Link My AI Key</>}
-             </button>
-             {hasApiKey && (
-               <div className="flex items-center justify-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 py-2 rounded-xl">
-                 <ShieldCheck size={14} strokeWidth={4} /> System Online & Private
+             {!showInput ? (
+               <>
+                 <button onClick={handlePrimary} className={`w-full py-5 rounded-[2rem] font-black text-lg shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${hasApiKey ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white'}`}>
+                   {hasApiKey ? <><RotateCcw size={22} /> Switch AI Key</> : <><Key size={22} /> Link My AI Key</>}
+                 </button>
+                 {hasApiKey && (
+                   <div className="flex items-center justify-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 py-2 rounded-xl">
+                     <ShieldCheck size={14} strokeWidth={4} /> System Online & Private
+                   </div>
+                 )}
+               </>
+             ) : (
+               <div className="flex flex-col gap-3">
+                 <input className="w-full p-3 rounded-xl bg-white/80 border border-white/30 text-sm" placeholder="Paste your API key…" value={inputValue} onChange={e => setInputValue(e.target.value)} />
+                 <div className="flex gap-3">
+                   <button onClick={handleSave} disabled={isSaving} className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white font-black">{isSaving ? 'Saving…' : 'Save'}</button>
+                   <button onClick={() => { setShowInput(false); setInputValue(''); }} className="flex-1 py-3 rounded-2xl bg-white/30 font-black">Cancel</button>
+                 </div>
                </div>
              )}
           </div>

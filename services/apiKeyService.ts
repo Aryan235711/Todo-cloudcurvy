@@ -46,7 +46,10 @@ export const promptForApiKey = async (): Promise<string | null> => {
     return (res.value || '').trim();
   }
 
-  const res = window.prompt('Paste your AI API key to enable AI features:');
-  if (res === null) return null;
-  return res.trim();
+  // Avoid using synchronous, blocking browser dialogs (window.prompt) which can
+  // cause WebKit to 'make the view blank' before the first paint. On web, the
+  // UI should present a non-blocking modal instead (see `ApiKeyModal`). Return
+  // null here so the caller can open a non-blocking flow.
+  console.warn('promptForApiKey: window.prompt removed on web to avoid blocking first paint. Open the ApiKeyModal instead.');
+  return null;
 };

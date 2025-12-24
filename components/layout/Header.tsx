@@ -28,11 +28,11 @@ export const Header: React.FC<HeaderProps> = ({
          </button>
       </div>
       <div className="absolute right-0 top-0 flex gap-2">
-        <button onClick={onOpenKeyModal} className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative ${hasApiKey ? 'text-emerald-500' : 'text-amber-500'}`}>
+        <button onClick={onOpenKeyModal} aria-label="Open API Key Modal" className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative ${hasApiKey ? 'text-emerald-500' : 'text-amber-500'}`}>
           <Key size={24} />
           <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${hasApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
         </button>
-        <button onClick={onOpenLibrary} className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative">
+        <button onClick={onOpenLibrary} aria-label="Open Library" className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative">
           <Library size={24} />
           {templatesCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-black shadow-lg">{templatesCount}</span>}
         </button>

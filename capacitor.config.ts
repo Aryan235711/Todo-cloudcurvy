@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
     ? {
         server: {
           url: liveReloadUrl,
-          cleartext: true,
+          cleartext: process.env.NODE_ENV === 'development', // Only allow cleartext in dev
         },
       }
     : {}),

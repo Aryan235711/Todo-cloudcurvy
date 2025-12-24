@@ -29,8 +29,9 @@ export const TodoBundle: React.FC<TodoBundleProps> = ({
 }) => {
   const completedCount = items.filter(i => i.completed).length;
   const totalCount = items.length;
-  const isAllCompleted = completedCount === totalCount;
-  const progressPercent = (completedCount / totalCount) * 100;
+  const isAllCompleted = totalCount > 0 && completedCount === totalCount;
+  // Guard against division by zero
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   const sortedItems = React.useMemo(() => {
     return items

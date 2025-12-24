@@ -1,11 +1,19 @@
 import UIKit
 import Capacitor
+import os
 
+@objcMembers
+@objc(SceneDelegate)
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = scene as? UIWindowScene else { return }
+        guard let windowScene = scene as? UIWindowScene else {
+            os_log("SceneDelegate: received non-UIWindowScene", type: .error)
+            return
+        }
+
+        os_log("SceneDelegate: willConnectTo", type: .info)
         let window = UIWindow(windowScene: windowScene)
 
         // Create the Capacitor bridge view controller
@@ -13,25 +21,27 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = bridgeViewController
         self.window = window
         window.makeKeyAndVisible()
+
+        os_log("SceneDelegate: madeKeyAndVisible rootViewController=%{public}@", type: .info, String(describing: window.rootViewController))
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
-        // Called as the scene is being released by the system.
+        os_log("SceneDelegate: didDisconnect", type: .info)
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // Called when the scene has moved from an inactive state to an active state.
+        os_log("SceneDelegate: didBecomeActive", type: .info)
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        // Called when the scene will move from an active state to an inactive state.
+        os_log("SceneDelegate: willResignActive", type: .info)
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        // Called as the scene transitions from the background to the foreground.
+        os_log("SceneDelegate: willEnterForeground", type: .info)
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        // Called as the scene transitions from the foreground to the background.
+        os_log("SceneDelegate: didEnterBackground", type: .info)
     }
 }

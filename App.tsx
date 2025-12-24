@@ -20,6 +20,7 @@ import { TodoInput } from './components/features/todo/TodoInput';
 import { TodoBundle } from './components/features/todo/TodoBundle';
 
 const App: React.FC = () => {
+    const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
   const {
     todos, setTodos,
     templates, setTemplates,
@@ -55,9 +56,15 @@ const App: React.FC = () => {
   const SECTION_STEP = 10;
   const SECTION_CAP = 50;
 
-  const handleConnectKey = useCallback(async () => {
+  const handleConnectKey = useCallback(async (manualKey?: string | null) => {
     try {
-      const maybeKey = await promptForApiKey();
+      let maybeKey = manualKey;
+
+      // If no manual key was provided, attempt the platform-native prompt (returns null on web)
+      if (typeof maybeKey === 'undefined') {
+        maybeKey = await promptForApiKey();
+      }
+
       if (maybeKey) {
         setAiError('Validating API key…');
         const validation = await validateApiKey(maybeKey);
@@ -76,15 +83,9 @@ const App: React.FC = () => {
         return;
       }
 
-      if (window.aistudio?.openSelectKey) {
-        triggerHaptic('medium');
-        await window.aistudio.openSelectKey();
-        setHasApiKey(true);
-        setIsKeyModalOpen(false);
-        setAiError(null);
-        return;
-      }
-
+      // If we reach here, no key was obtained. In web contexts we expect the ApiKeyModal
+      // to show an inline non-blocking input (handled there). Surface a user-facing
+      // message so they know how to proceed.
       setAiError('No key manager available. Please paste an API key manually.');
     } catch {
       setAiError('Failed to connect API key. Please try again.');
@@ -420,17 +421,26 @@ const App: React.FC = () => {
         </main>
 
         <Footer
-          onPurge={() => {
-            if(confirm("Permanently erase everything? This includes all your tasks and custom templates.")) {
-              setTodos([]);
-              setTemplates([]);
-              localStorage.removeItem('curvycloud_todos');
-              localStorage.removeItem('curvycloud_templates');
-              localStorage.removeItem('curvycloud_onboarding_seen');
-              window.location.reload();
-            }
-          }}
+          // Replace native confirm with custom modal
+          onPurge={() => setShowCustomPurgeModal(true)}
         />
+
+      {/* Custom Purge Modal */}
+      {showCustomPurgeModal && (
+        <CustomConfirmModal
+          message="Permanently erase everything? This includes all your tasks and custom templates."
+          onConfirm={() => {
+            setTodos([]);
+            setTemplates([]);
+            localStorage.removeItem('curvycloud_todos');
+            localStorage.removeItem('curvycloud_templates');
+            localStorage.removeItem('curvycloud_onboarding_seen');
+            window.location.reload();
+            setShowCustomPurgeModal(false);
+          }}
+          onCancel={() => setShowCustomPurgeModal(false)}
+        />
+      )}
 
         <ApiKeyModal isOpen={isKeyModalOpen} onClose={() => setIsKeyModalOpen(false)} hasApiKey={hasApiKey} onConnect={handleConnectKey} />
 

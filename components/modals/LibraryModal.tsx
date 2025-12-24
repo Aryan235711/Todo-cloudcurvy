@@ -119,14 +119,23 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
   if (!isOpen) return null;
 
   const handleDeleteTemplate = (tmpl: Template) => {
-    const ok = confirm(`Delete “${tmpl.name}” from your Manifest Vault?`);
-    if (!ok) return;
-    setTemplates(prev => prev.filter(t => t.id !== tmpl.id));
-    if (expandedTemplateId === tmpl.id) setExpandedTemplateId(null);
-    if (editingTemplateId === tmpl.id) {
-      setEditingTemplateId(null);
-      setEditTemplateData(null);
-    }
+    setPendingDeleteTemplate(tmpl);
+    {/* Custom Delete Modal */}
+    {pendingDeleteTemplate && (
+      <CustomConfirmModal
+        message={`Delete “${pendingDeleteTemplate.name}” from your Manifest Vault?`}
+        onConfirm={() => {
+          setTemplates(prev => prev.filter(t => t.id !== pendingDeleteTemplate.id));
+          if (expandedTemplateId === pendingDeleteTemplate.id) setExpandedTemplateId(null);
+          if (editingTemplateId === pendingDeleteTemplate.id) {
+            setEditingTemplateId(null);
+            setEditTemplateData(null);
+          }
+          setPendingDeleteTemplate(null);
+        }}
+        onCancel={() => setPendingDeleteTemplate(null)}
+      />
+    )}
   };
 
   const saveTemplateEdit = () => {

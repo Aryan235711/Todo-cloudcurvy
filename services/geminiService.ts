@@ -446,30 +446,37 @@ export const getTaskBreakdown = async (taskText: string): Promise<string[]> => {
   if (existing) return existing;
 
   const p = callWithRetry(async (ai) => {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Break down this task into 3-5 simple, actionable sub-tasks: "${taskText}"`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            steps: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
-          },
-          required: ["steps"]
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Break down this task into 3-5 simple, actionable sub-tasks: "${taskText}"`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              steps: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ["steps"]
+          }
         }
+      });
+      const jsonStr = response.text || '{"steps": []}';
+      const data = JSON.parse(jsonStr);
+      const steps: string[] = Array.isArray(data?.steps) ? data.steps : [];
+      cacheSet(breakdownCache, cacheKey, steps, 30 * 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.breakdown); // 30 days
+      schedulePersist();
+      return steps;
+    } catch (error) {
+      console.error('AI breakdown failed:', error);
+      if (import.meta.env.DEV) {
+        // Optionally show a toast or error message in UI
       }
-    });
-
-    const jsonStr = response.text || '{"steps": []}';
-    const data = JSON.parse(jsonStr);
-    const steps: string[] = Array.isArray(data?.steps) ? data.steps : [];
-    cacheSet(breakdownCache, cacheKey, steps, 30 * 24 * 60 * 60 * 1000, MAX_CACHE_ENTRIES.breakdown); // 30 days
-    schedulePersist();
-    return steps;
+      return [];
+    }
   });
 
   inflightBreakdown.set(cacheKey, p);

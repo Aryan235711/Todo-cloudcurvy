@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import os
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +8,45 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Minimal AppDelegate-driven setup (no UIScene manifest)
+        os_log("AppDelegate: didFinishLaunching - setting up UIWindow and Capacitor bridge", type: .info)
+
+        if #available(iOS 13.0, *) {
+            os_log("AppDelegate: iOS 13+ — deferring window setup to SceneDelegate", type: .info)
+        } else {
+            let window = UIWindow(frame: UIScreen.main.bounds)
+            window.backgroundColor = .systemBackground
+            let bridgeViewController = CAPBridgeViewController()
+            bridgeViewController.view.backgroundColor = .systemBackground
+            window.rootViewController = bridgeViewController
+            self.window = window
+            window.makeKeyAndVisible()
+
+            // Diagnostics: log view frames and subviews shortly after launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                os_log("AppDelegate: bridge view frame: %{public}@", type: .info, String(describing: bridgeViewController.view.frame))
+                os_log("AppDelegate: bridge view subviews count: %d", type: .info, bridgeViewController.view.subviews.count)
+                func dumpView(_ v: UIView, indent: String = "") {
+                    os_log("AppDelegate: %{public}@view type: %{public}@ frame: %{public}@ hidden:%d alpha:%{public}@", type: .info, indent, String(describing: type(of: v)), String(describing: v.frame), v.isHidden ? 1 : 0, String(describing: v.alpha))
+                    for sub in v.subviews {
+                        dumpView(sub, indent: indent + "  ")
+                    }
+                }
+                dumpView(bridgeViewController.view)
+                // Search recursively for WKWebView
+                func findWK(in v: UIView) -> UIView? {
+                    if String(describing: type(of: v)).contains("WKWebView") { return v }
+                    for sub in v.subviews { if let found = findWK(in: sub) { return found } }
+                    return nil
+                }
+                if let wk = findWK(in: bridgeViewController.view) {
+                    os_log("AppDelegate: found WKWebView (recursive) frame: %{public}@ hidden:%d alpha:%{public}@", type: .info, String(describing: wk.frame), wk.isHidden ? 1 : 0, String(describing: wk.alpha))
+                } else {
+                    os_log("AppDelegate: WKWebView not found in view hierarchy", type: .info)
+                }
+            }
+        }
+
         return true
     }
 
