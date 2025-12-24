@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Mic, MicOff, Sparkles, Plus } from 'lucide-react';
 import { Priority } from '../../../types';
@@ -31,9 +30,8 @@ export const TodoInput: React.FC<TodoInputProps> = ({
 }) => {
   const canVoice = voiceMode !== 'none';
   const [isFocused, setIsFocused] = useState(false);
-  const showPlaceholder = !inputValue.trim() && !isFocused;
-  // Fix: Show placeholder when input is empty and not focused
-  const placeholderText = showPlaceholder ? 'Manifest a template…' : '';
+  const showAnimatedPlaceholder = !inputValue.trim() && !isFocused;
+  const showStaticPlaceholder = !inputValue.trim() && isFocused;
 
   return (
     <div className="liquid-glass rounded-[2.5rem] p-4 sm:p-5 curvy-shadow mb-10 sticky top-4 z-40 w-full flex flex-col gap-4">
@@ -54,7 +52,7 @@ export const TodoInput: React.FC<TodoInputProps> = ({
             {!canVoice ? <MicOff size={22} /> : (isListening ? <MicOff size={22} /> : <Mic size={22} />)}
           </button>
           <div className="flex-1 overflow-hidden relative">
-            {showPlaceholder && (
+            {showAnimatedPlaceholder && (
               <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
                 <div className="w-full overflow-hidden">
                   <div className="inline-flex whitespace-nowrap curvy-placeholder-marquee sm:animate-none text-lg font-bold tracking-tight text-slate-200">
@@ -70,7 +68,7 @@ export const TodoInput: React.FC<TodoInputProps> = ({
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder={placeholderText}
+              placeholder={showStaticPlaceholder ? "Manifest a template…" : ""}
               className="w-full bg-transparent text-lg sm:text-2xl font-bold placeholder-slate-200 focus:outline-none tracking-tight"
             />
           </div>

@@ -6,14 +6,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
-
-// Push notifications - only import if available
-let PushNotifications: any = null;
-try {
-  PushNotifications = require('@capacitor/push-notifications').PushNotifications;
-} catch {
-  // Push notifications package not installed
-}
+import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 
 const analytics = {
   track: (event: string, data: any) => {
@@ -22,29 +15,47 @@ const analytics = {
 };
 
 export const registerPushNotifications = async () => {
-  if (!Capacitor.isNativePlatform() || !PushNotifications) return;
+  if (!Capacitor.isNativePlatform()) return;
   
   try {
-    await PushNotifications.requestPermissions();
+    const result = await PushNotifications.requestPermissions();
+    if (result.receive !== 'granted') {
+      console.warn('Push notification permission denied');
+      return;
+    }
+
     await PushNotifications.register();
 
-    PushNotifications.addListener('registration', (token: any) => {
+    PushNotifications.addListener('registration', (token: Token) => {
       analytics.track('push_token_registered', { token: token.value });
+      console.log('Push registration success, token: ' + token.value);
     });
 
     PushNotifications.addListener('registrationError', (error: any) => {
-      analytics.track('push_registration_error', { error });
+      analytics.track('push_registration_error', { error: error.error });
+      console.error('Push registration error: ', error.error);
     });
 
-    PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-      analytics.track('push_received', notification);
+    PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
+      analytics.track('push_received', { 
+        title: notification.title,
+        body: notification.body,
+        id: notification.id 
+      });
+      console.log('Push notification received: ', notification);
     });
 
-    PushNotifications.addListener('pushNotificationActionPerformed', (action: any) => {
-      analytics.track('push_action', action);
+    PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
+      analytics.track('push_action', { 
+        actionId: action.actionId,
+        notificationId: action.notification.id 
+      });
+      console.log('Push notification action performed: ', action.actionId);
     });
+
   } catch (error) {
     console.warn('Push notification registration failed:', error);
+    analytics.track('push_registration_failed', { error });
   }
 };
 
