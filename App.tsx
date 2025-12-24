@@ -1,7 +1,7 @@
 
 import React, { useCallback, useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { registerPushNotifications, requestNotificationPermission, triggerHaptic } from './services/notificationService';
+import { registerPushNotifications, requestNotificationPermission, triggerHaptic, getBehavioralInsights, getNotificationStats } from './services/notificationService';
 import { Sun, AlertTriangle, X } from 'lucide-react';
 import { Todo } from './types';
 import { CATEGORIES } from './constants';
@@ -20,20 +20,13 @@ import { Footer } from './components/layout/Footer';
 import { TodoInput } from './components/features/todo/TodoInput';
 import { TodoBundle } from './components/features/todo/TodoBundle';
 import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
+import { NeuralNudgeDashboard } from './components/modals/NeuralNudgeDashboard';
 
 const App: React.FC = () => {
-  // Initialize Neural Nudge System
-  useEffect(() => {
-    const initializeNeuralNudge = async () => {
-      if (Capacitor.isNativePlatform()) {
-        await registerPushNotifications();
-      }
-      // Request notification permissions for smart nudges
-      await requestNotificationPermission();
-    };
-    initializeNeuralNudge();
-  }, []);
-    const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
+  const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
+  const [isNeuralNudgeOpen, setIsNeuralNudgeOpen] = useState(false);
+  const [neuralNudgeData, setNeuralNudgeData] = useState<any>(null);
+  
   const {
     todos, setTodos,
     templates, setTemplates,
@@ -56,6 +49,50 @@ const App: React.FC = () => {
     handleMagicTemplate,
     capitalize
   } = useTodoLogic();
+
+  // Initialize Neural Nudge System
+  useEffect(() => {
+    const initializeNeuralNudge = async () => {
+      if (Capacitor.isNativePlatform()) {
+        await registerPushNotifications();
+      }
+      // Request notification permissions for smart nudges
+      await requestNotificationPermission();
+    };
+    initializeNeuralNudge();
+  }, []);
+
+  // Update Neural Nudge data periodically
+  useEffect(() => {
+    const updateNeuralNudgeData = () => {
+      try {
+        const insights = getBehavioralInsights();
+        const stats = getNotificationStats();
+        
+        // Debug logging
+        console.log('Neural Nudge Debug:', {
+          insights,
+          stats,
+          streak: stats.streak || 'undefined'
+        });
+        
+        setNeuralNudgeData({
+          ...insights,
+          streak: stats.streak,
+          engagement: stats.engagementScore,
+          isQuietTime: stats.isQuietTime,
+          nextOptimalDelay: stats.nextOptimalDelay,
+          isActive: insights.procrastinationRisk !== 'low'
+        });
+      } catch (error) {
+        console.warn('Failed to update Neural Nudge data:', error);
+      }
+    };
+
+    updateNeuralNudgeData();
+    const interval = setInterval(updateNeuralNudgeData, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, [todos]);
 
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
@@ -225,9 +262,11 @@ const App: React.FC = () => {
           onShowOnboarding={() => { setShowOnboarding(true); triggerHaptic('medium'); }}
           onOpenKeyModal={() => setIsKeyModalOpen(true)}
           onOpenLibrary={() => { setIsTemplatesOpen(true); triggerHaptic('medium'); }}
+          onOpenNeuralNudge={() => { setIsNeuralNudgeOpen(true); triggerHaptic('medium'); }}
           hasApiKey={hasApiKey}
           templatesCount={templates.length}
           motivation={motivation}
+          neuralNudgeData={neuralNudgeData}
         />
 
         {aiError && (
@@ -514,6 +553,16 @@ const App: React.FC = () => {
           }}
           capitalize={capitalize}
         />
+
+        {/* Neural Nudge Dashboard */}
+        {neuralNudgeData && (
+          <NeuralNudgeDashboard
+            isOpen={isNeuralNudgeOpen}
+            onClose={() => setIsNeuralNudgeOpen(false)}
+            insights={neuralNudgeData}
+            stats={neuralNudgeData}
+          />
+        )}
       </div>
     </div>
   );

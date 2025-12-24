@@ -1,25 +1,50 @@
 
 import React from 'react';
-import { Info, Key, Library, Cloud } from 'lucide-react';
+import { Info, Key, Library, Cloud, Bell } from 'lucide-react';
 import { APP_TITLE } from '../../constants';
 
 interface HeaderProps {
   onShowOnboarding: () => void;
   onOpenKeyModal: () => void;
   onOpenLibrary: () => void;
+  onOpenNeuralNudge: () => void;
   hasApiKey: boolean;
   templatesCount: number;
   motivation: string;
+  neuralNudgeData?: {
+    procrastinationRisk: 'low' | 'medium' | 'high';
+    engagementScore: number;
+    isActive: boolean;
+  };
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onShowOnboarding,
   onOpenKeyModal,
   onOpenLibrary,
+  onOpenNeuralNudge,
   hasApiKey,
   templatesCount,
-  motivation
+  motivation,
+  neuralNudgeData
 }) => {
+  const getRiskColor = (risk: string) => {
+    switch (risk) {
+      case 'high': return 'text-rose-500';
+      case 'medium': return 'text-amber-500';
+      case 'low': return 'text-emerald-500';
+      default: return 'text-slate-400';
+    }
+  };
+
+  const getRiskDotColor = (risk: string) => {
+    switch (risk) {
+      case 'high': return 'bg-rose-500';
+      case 'medium': return 'bg-amber-500';
+      case 'low': return 'bg-emerald-500';
+      default: return 'bg-slate-400';
+    }
+  };
   return (
     <header className="mb-12 text-center flex flex-col items-center relative w-full">
       <div className="absolute left-0 top-0">
@@ -28,6 +53,24 @@ export const Header: React.FC<HeaderProps> = ({
          </button>
       </div>
       <div className="absolute right-0 top-0 flex gap-2">
+        <button 
+          onClick={onOpenNeuralNudge} 
+          aria-label="Neural Nudge Dashboard" 
+          className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative ${
+            neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
+          } ${
+            neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
+          }`}
+        >
+          <Bell size={24} />
+          {neuralNudgeData && (
+            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+              getRiskDotColor(neuralNudgeData.procrastinationRisk)
+            } ${
+              neuralNudgeData.isActive ? 'animate-pulse' : ''
+            }`} />
+          )}
+        </button>
         <button onClick={onOpenKeyModal} aria-label="Open API Key Modal" className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative ${hasApiKey ? 'text-emerald-500' : 'text-amber-500'}`}>
           <Key size={24} />
           <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${hasApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />

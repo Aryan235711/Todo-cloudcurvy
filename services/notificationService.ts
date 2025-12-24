@@ -7,6 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
+import { abTestService } from './abTestService';
 
 const analytics = {
   track: (event: string, data: any) => {
@@ -115,7 +116,15 @@ class SmartScheduler {
     if (this.isQuietTime()) return 8 * 60 * 60 * 1000; // 8 hours
     
     const timeSinceActivity = Date.now() - this.pattern.lastActivity;
-    const baseDelay = 5 * 60 * 1000; // 5 minutes
+    let baseDelay = 5 * 60 * 1000; // 5 minutes
+    
+    // A/B Test: Notification Frequency
+    const frequencyVariant = abTestService.getVariant('notification_frequency');
+    if (frequencyVariant === 'high_frequency') {
+      baseDelay = 3 * 60 * 1000; // 3 minutes for high frequency
+    } else if (frequencyVariant === 'low_frequency') {
+      baseDelay = 10 * 60 * 1000; // 10 minutes for low frequency
+    }
     
     // Use predictive insights to adjust delay
     const prediction = this.getPredictiveInsight();
@@ -275,104 +284,62 @@ class SmartScheduler {
   }
 
   generateMotivationalMessage(context: MotivationContext): { title: string; body: string } {
+    // A/B Test: Message Tone
+    const toneVariant = abTestService.getVariant('message_tone');
+    
     const motivationLibrary = {
       streak: {
-        low: [
-          ['🌟 Every step counts', 'Small progress is still progress'],
-          ['💪 Building momentum', 'You\'re creating positive habits'],
-          ['🎯 Stay consistent', 'Consistency beats perfection']
-        ],
-        medium: [
-          ['🔥 You\'re on a roll!', `${context.streak} tasks completed - keep going!`],
-          ['⚡ Momentum building', 'Your consistency is paying off'],
-          ['🚀 Streak power!', 'You\'re in the zone - don\'t stop now']
-        ],
-        high: [
-          ['🏆 Unstoppable force!', `${context.streak} task streak - you\'re crushing it!`],
-          ['👑 Productivity champion', 'Your dedication is inspiring'],
-          ['🎖️ Master of momentum', 'This streak shows your true potential']
-        ]
-      },
-      timeOfDay: {
-        morning: [
-          ['☀️ Fresh start energy', 'Morning minds are sharpest'],
-          ['🌅 Dawn of productivity', 'Early action sets the tone'],
-          ['🐦 Early bird advantage', 'You\'re ahead of the game']
-        ],
-        afternoon: [
-          ['⚡ Afternoon power', 'Peak performance time'],
-          ['🎯 Midday momentum', 'Keep the energy flowing'],
-          ['🔋 Recharged and ready', 'Second wind incoming']
-        ],
-        evening: [
-          ['🌟 Evening excellence', 'Finish strong today'],
-          ['🎭 Prime time focus', 'Your best work happens now'],
-          ['🌆 Golden hour productivity', 'End the day with purpose']
-        ],
-        night: [
-          ['🌙 Night owl power', 'Quiet hours, deep focus'],
-          ['✨ Midnight momentum', 'When others rest, you excel'],
-          ['🦉 Late night clarity', 'Your mind is sharp in stillness']
-        ]
-      },
-      priority: {
-        high: [
-          ['🎯 Mission critical', 'This task changes everything'],
-          ['⚡ High impact ahead', 'Your future self will thank you'],
-          ['🚀 Game changer time', 'Big results need bold action']
-        ],
-        medium: [
-          ['📈 Steady progress', 'Building toward your goals'],
-          ['⚖️ Balanced approach', 'Important work deserves attention'],
-          ['🎪 Show time', 'Ready to make it happen']
-        ],
-        low: [
-          ['🌱 Small seeds grow', 'Every task has value'],
-          ['🎈 Light and easy', 'Quick wins build confidence'],
-          ['☁️ Gentle progress', 'Smooth sailing ahead']
-        ]
-      },
-      engagement: {
-        high: [
-          ['🔥 You\'re unstoppable!', 'This energy is contagious'],
-          ['⚡ Lightning focus', 'Channel this power wisely'],
-          ['🚀 Peak performance', 'You\'re in the flow state']
-        ],
-        medium: [
-          ['💪 Steady strength', 'Consistent effort wins'],
-          ['🎯 Focused energy', 'You\'ve got this handled'],
-          ['⚖️ Balanced power', 'Sustainable excellence']
-        ],
-        low: [
-          ['🌱 Gentle start', 'Small steps lead to big wins'],
-          ['☁️ Easy does it', 'Progress over perfection'],
-          ['🎈 Light momentum', 'Build energy as you go']
-        ]
+        low: {
+          encouraging: [
+            ['🌟 Every step counts', 'Small progress is still progress'],
+            ['💪 Building momentum', 'You\'re creating positive habits']
+          ],
+          urgent: [
+            ['⚡ Act now!', 'Don\'t break the chain - keep going'],
+            ['🔥 Push forward', 'Momentum dies without action']
+          ],
+          neutral: [
+            ['📊 Progress update', 'Continue with current task'],
+            ['⏰ Task reminder', 'Maintain consistency']
+          ]
+        },
+        medium: {
+          encouraging: [
+            ['🔥 You\'re on a roll!', `${context.streak} tasks completed - keep going!`],
+            ['⚡ Momentum building', 'Your consistency is paying off']
+          ],
+          urgent: [
+            ['🚀 Don\'t stop now!', `${context.streak} streak - push harder!`],
+            ['💥 Accelerate!', 'Strike while the iron is hot']
+          ],
+          neutral: [
+            ['📈 Streak active', `Current: ${context.streak} completions`],
+            ['⚖️ Maintain pace', 'Steady progress continues']
+          ]
+        },
+        high: {
+          encouraging: [
+            ['🏆 Unstoppable force!', `${context.streak} task streak - you\'re crushing it!`],
+            ['👑 Productivity champion', 'Your dedication is inspiring']
+          ],
+          urgent: [
+            ['🔥 BEAST MODE!', `${context.streak} streak - DOMINATE!`],
+            ['⚡ UNSTOPPABLE!', 'Channel this power - GO!']
+          ],
+          neutral: [
+            ['📊 High performance', `${context.streak} task completion streak`],
+            ['🎯 Optimal state', 'Maintaining peak productivity']
+          ]
+        }
       }
     };
 
-    // Select motivation category based on context
-    let selectedMessages: string[][];
+    // Select appropriate tone and streak level
+    const streakLevel = context.streak > 5 ? 'high' : context.streak > 2 ? 'medium' : 'low';
+    const tone = toneVariant || 'encouraging';
     
-    if (context.streak > 5) {
-      selectedMessages = motivationLibrary.streak.high;
-    } else if (context.streak > 2) {
-      selectedMessages = motivationLibrary.streak.medium;
-    } else if (context.engagement > 0.8) {
-      selectedMessages = motivationLibrary.engagement.high;
-    } else if (context.engagement < 0.4) {
-      selectedMessages = motivationLibrary.engagement.low;
-    } else {
-      selectedMessages = motivationLibrary.timeOfDay[context.timeOfDay];
-    }
-
-    // Add priority-specific messages for high-priority tasks
-    if (context.priority === 'high' && Math.random() > 0.5) {
-      selectedMessages = [...selectedMessages, ...motivationLibrary.priority.high];
-    }
-
-    // Select random message from appropriate category
-    const randomMessage = selectedMessages[Math.floor(Math.random() * selectedMessages.length)];
+    const messages = motivationLibrary.streak[streakLevel][tone] || motivationLibrary.streak.low.encouraging;
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
     const [title, body] = randomMessage;
 
     return { title, body };
@@ -570,7 +537,8 @@ export const getNotificationStats = () => ({
   isQuietTime: scheduler.isQuietTime(),
   nextOptimalDelay: scheduler.getOptimalDelay(),
   lastActivity: scheduler['pattern'].lastActivity,
-  engagementScore: scheduler['pattern'].engagementScore
+  engagementScore: scheduler['pattern'].engagementScore,
+  streak: scheduler['pattern'].completionStreak
 });
 export const recordTaskCompletion = (priority: 'low' | 'medium' | 'high' = 'medium') => {
   scheduler.recordCompletion();
@@ -581,11 +549,18 @@ export const recordTaskCompletion = (priority: 'low' | 'medium' | 'high' = 'medi
     scheduler['pattern'].completionHistory[lastIndex].priority = priority;
   }
   
+  // Track A/B test metrics for task completion
+  abTestService.trackMetric('intervention_timing', 'task_completed', 1);
+  abTestService.trackMetric('message_tone', 'task_completed', 1);
+  abTestService.trackMetric('notification_frequency', 'task_completed', 1);
+  abTestService.trackMetric('intervention_timing', 'engagement_score', scheduler['pattern'].engagementScore);
+  
   analytics.track('task_completed', { 
     priority, 
     newStreak: scheduler['pattern'].completionStreak,
     engagementScore: scheduler['pattern'].engagementScore,
-    predictiveInsight: scheduler.getPredictiveInsight()
+    predictiveInsight: scheduler.getPredictiveInsight(),
+    activeExperiments: abTestService.getCurrentExperiments()
   });
 };
 
@@ -699,7 +674,8 @@ export const getBehavioralInsights = () => {
     suggestedAction: insight.suggestedAction,
     confidence: insight.confidence,
     nextOptimalHour: predictive.optimalHour,
-    behaviorPattern: predictive.reason
+    behaviorPattern: predictive.reason,
+    activeExperiments: abTestService.getCurrentExperiments()
   };
 };
 
@@ -711,6 +687,17 @@ export const sendBehavioralIntervention = async (
   if (behavioral.procrastinationRisk === 'low') {
     return false; // No intervention needed
   }
+  
+  // A/B Test: Intervention Timing Strategy
+  const timingVariant = abTestService.getVariant('intervention_timing');
+  let actualTiming = behavioral.interventionTiming;
+  
+  if (timingVariant === 'aggressive') {
+    actualTiming = 'immediate'; // Always immediate for aggressive variant
+  } else if (timingVariant === 'gentle') {
+    actualTiming = behavioral.procrastinationRisk === 'high' ? 'gentle' : 'delayed';
+  }
+  // 'adaptive' uses the original behavioral.interventionTiming
   
   const messages = {
     high: {
@@ -726,14 +713,20 @@ export const sendBehavioralIntervention = async (
   };
   
   const riskLevel = behavioral.procrastinationRisk === 'high' ? 'high' : 'medium';
-  const timing = behavioral.interventionTiming;
-  const [title, body] = messages[riskLevel][timing];
+  const [title, body] = messages[riskLevel][actualTiming];
   
-  const delay = timing === 'immediate' ? 0 : timing === 'gentle' ? 2 * 60 * 1000 : 10 * 60 * 1000;
+  const delay = actualTiming === 'immediate' ? 0 : actualTiming === 'gentle' ? 2 * 60 * 1000 : 10 * 60 * 1000;
+  
+  // Track A/B test metrics
+  abTestService.trackMetric('intervention_timing', 'intervention_sent', 1);
+  abTestService.trackMetric('message_tone', 'intervention_sent', 1);
+  abTestService.trackMetric('notification_frequency', 'intervention_sent', 1);
   
   analytics.track('behavioral_intervention', {
     risk: behavioral.procrastinationRisk,
-    timing: behavioral.interventionTiming,
+    timing: actualTiming,
+    originalTiming: behavioral.interventionTiming,
+    timingVariant,
     probability: behavioral.completionProbability,
     confidence: behavioral.confidence
   });
