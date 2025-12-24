@@ -142,6 +142,27 @@ export const NeuralNudgeDashboard: React.FC<NeuralNudgeDashboardProps> = ({
             <span>Confidence: {Math.round(insights.confidence * 100)}%</span>
             <span>{stats.isQuietTime ? '🌙 Quiet Hours' : '☀️ Active Hours'}</span>
           </div>
+          
+          {/* Rate Limiting Status */}
+          {stats.rateLimitStatus && (
+            <div className={`p-3 rounded-xl border text-xs ${
+              stats.rateLimitStatus.cooldownActive 
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold uppercase tracking-wide">
+                  {stats.rateLimitStatus.cooldownActive ? '⏳ Cooldown Active' : '✅ Ready to Notify'}
+                </span>
+                <span>{stats.rateLimitStatus.notificationsInWindow}/{stats.rateLimitStatus.maxNotifications}</span>
+              </div>
+              {stats.rateLimitStatus.cooldownActive && (
+                <div className="text-xs opacity-75">
+                  Next notification in {Math.round(stats.rateLimitStatus.timeUntilNext / 60000)}m
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { abTestService } from './abTestService';
+import { rateLimitService } from './rateLimitService';
 
 const analytics = {
   track: (event: string, data: any) => {
@@ -538,7 +539,8 @@ export const getNotificationStats = () => ({
   nextOptimalDelay: scheduler.getOptimalDelay(),
   lastActivity: scheduler['pattern'].lastActivity,
   engagementScore: scheduler['pattern'].engagementScore,
-  streak: scheduler['pattern'].completionStreak
+  streak: scheduler['pattern'].completionStreak,
+  rateLimitStatus: rateLimitService.getRateLimitStatus()
 });
 export const recordTaskCompletion = (priority: 'low' | 'medium' | 'high' = 'medium') => {
   scheduler.recordCompletion();
@@ -568,11 +570,26 @@ export const sendContextualNudge = async (
   context: NotificationContext,
   opts?: { delayMs?: number; at?: Date }
 ): Promise<boolean> => {
-  return sendNudge('Task Reminder', 'You have a pending task', {
-    ...opts,
-    smart: true,
-    context
-  });
+  // Enterprise Rate Limiting Check
+  if (!rateLimitService.canSendNotification('contextual')) {
+    console.log('[Neural Nudge] Contextual nudge blocked by rate limiting');
+    rateLimitService.recordNotificationAttempt('contextual', false);
+    return false;
+  }
+  
+  try {
+    const success = await sendNudge('Task Reminder', 'You have a pending task', {
+      ...opts,
+      smart: true,
+      context
+    });
+    
+    rateLimitService.recordNotificationAttempt('contextual', success);
+    return success;
+  } catch (error) {
+    rateLimitService.recordNotificationAttempt('contextual', false);
+    throw error;
+  }
 };
 
 export const getCompletionStats = () => ({
@@ -628,6 +645,13 @@ export const scheduleOptimalNotification = async (
 export const generateMotivationalNudge = async (
   context?: { priority?: 'low' | 'medium' | 'high'; category?: string }
 ): Promise<boolean> => {
+  // Enterprise Rate Limiting Check
+  if (!rateLimitService.canSendNotification('motivational')) {
+    console.log('[Neural Nudge] Motivational nudge blocked by rate limiting');
+    rateLimitService.recordNotificationAttempt('motivational', false);
+    return false;
+  }
+  
   const motivationContext: MotivationContext = {
     streak: scheduler['pattern'].completionStreak,
     engagement: scheduler['pattern'].engagementScore,
@@ -640,18 +664,29 @@ export const generateMotivationalNudge = async (
 
   const message = scheduler.generateMotivationalMessage(motivationContext);
   
-  analytics.track('motivational_nudge_generated', {
-    streak: motivationContext.streak,
-    engagement: motivationContext.engagement,
-    timeOfDay: motivationContext.timeOfDay,
-    priority: motivationContext.priority,
-    title: message.title
-  });
+  try {
+    const success = await sendNudge(message.title, message.body, {
+      smart: true,
+      context: { priority: context?.priority, category: context?.category }
+    });
+    
+    rateLimitService.recordNotificationAttempt('motivational', success);
+    
+    if (success) {
+      analytics.track('motivational_nudge_generated', {
+        streak: motivationContext.streak,
+        engagement: motivationContext.engagement,
+        timeOfDay: motivationContext.timeOfDay,
+        priority: motivationContext.priority,
+        title: message.title
+      });
+    }
 
-  return sendNudge(message.title, message.body, {
-    smart: true,
-    context: { priority: context?.priority, category: context?.category }
-  });
+    return success;
+  } catch (error) {
+    rateLimitService.recordNotificationAttempt('motivational', false);
+    throw error;
+  }
 };
 
 export const getMotivationStats = () => ({
@@ -688,6 +723,13 @@ export const sendBehavioralIntervention = async (
     return false; // No intervention needed
   }
   
+  // Enterprise Rate Limiting Check
+  if (!rateLimitService.canSendNotification('intervention')) {
+    console.log('[Neural Nudge] Intervention blocked by rate limiting');
+    rateLimitService.recordNotificationAttempt('intervention', false);
+    return false;
+  }
+  
   // A/B Test: Intervention Timing Strategy
   const timingVariant = abTestService.getVariant('intervention_timing');
   let actualTiming = behavioral.interventionTiming;
@@ -717,23 +759,36 @@ export const sendBehavioralIntervention = async (
   
   const delay = actualTiming === 'immediate' ? 0 : actualTiming === 'gentle' ? 2 * 60 * 1000 : 10 * 60 * 1000;
   
-  // Track A/B test metrics
-  abTestService.trackMetric('intervention_timing', 'intervention_sent', 1);
-  abTestService.trackMetric('message_tone', 'intervention_sent', 1);
-  abTestService.trackMetric('notification_frequency', 'intervention_sent', 1);
-  
-  analytics.track('behavioral_intervention', {
-    risk: behavioral.procrastinationRisk,
-    timing: actualTiming,
-    originalTiming: behavioral.interventionTiming,
-    timingVariant,
-    probability: behavioral.completionProbability,
-    confidence: behavioral.confidence
-  });
-  
-  return sendNudge(title, body, {
-    delayMs: delay,
-    smart: false, // Override smart scheduling for interventions
-    context: { ...context, priority: 'high' }
-  });
+  try {
+    const success = await sendNudge(title, body, {
+      delayMs: delay,
+      smart: false, // Override smart scheduling for interventions
+      context: { ...context, priority: 'high' }
+    });
+    
+    // Record rate limiting attempt
+    rateLimitService.recordNotificationAttempt('intervention', success);
+    
+    if (success) {
+      // Track A/B test metrics only on successful send
+      abTestService.trackMetric('intervention_timing', 'intervention_sent', 1);
+      abTestService.trackMetric('message_tone', 'intervention_sent', 1);
+      abTestService.trackMetric('notification_frequency', 'intervention_sent', 1);
+    }
+    
+    analytics.track('behavioral_intervention', {
+      risk: behavioral.procrastinationRisk,
+      timing: actualTiming,
+      originalTiming: behavioral.interventionTiming,
+      timingVariant,
+      probability: behavioral.completionProbability,
+      confidence: behavioral.confidence,
+      success
+    });
+    
+    return success;
+  } catch (error) {
+    rateLimitService.recordNotificationAttempt('intervention', false);
+    throw error;
+  }
 };
