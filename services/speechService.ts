@@ -1,5 +1,20 @@
 import { Capacitor } from '@capacitor/core';
 
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+}
+
+interface SpeechRecognition {
+  start(): void;
+  stop(): void;
+  // Add more properties/methods as needed
+}
+
+interface CurvyWindow extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 const getNativeSpeech = async () => {
   if (!Capacitor.isNativePlatform()) return null;
   try {
@@ -23,7 +38,8 @@ export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
     }
   }
 
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const win = window as CurvyWindow;
+  const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
   return SpeechRecognition ? 'web' : 'none';
 };
 
@@ -31,7 +47,7 @@ export const startNativeVoice = async (opts: { language?: string; prompt?: strin
   const nativeSpeech = await getNativeSpeech();
   if (!nativeSpeech) throw new Error('VOICE_UNAVAILABLE');
 
-  let perm: any;
+  let perm: { speechRecognition?: string };
   try {
     perm = await nativeSpeech.requestPermissions();
   } catch (e) {
@@ -41,7 +57,7 @@ export const startNativeVoice = async (opts: { language?: string; prompt?: strin
 
   if (perm?.speechRecognition !== 'granted') throw new Error('VOICE_PERMISSION_DENIED');
 
-  let res: any;
+  let res: { matches?: string[] };
   try {
     res = await nativeSpeech.start({
       language: opts.language || 'en-US',

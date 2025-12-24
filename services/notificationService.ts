@@ -1,6 +1,6 @@
 
 /**
- * 201 IQ Neural Nudge Service
+ * Neural Nudge Service
  * Handles Haptic Feedback and System Notifications
  */
 
@@ -92,23 +92,26 @@ export const sendNudge = async (
 
   try {
     if (delayMs > 0) {
-      window.setTimeout(() => {
-        try {
-          new Notification(title, {
-            body,
-            icon: '/favicon.ico',
-          });
-        } catch {
-          // ignore
-        }
-      }, delayMs);
+      return new Promise(resolve => {
+        window.setTimeout(() => {
+          try {
+            new Notification(title, {
+              body,
+              icon: '/favicon.ico',
+            });
+            resolve(true);
+          } catch {
+            resolve(false);
+          }
+        }, delayMs);
+      });
     } else {
       new Notification(title, {
         body,
         icon: '/favicon.ico',
       });
+      return true;
     }
-    return true;
   } catch {
     return false;
   }

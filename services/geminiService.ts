@@ -324,7 +324,7 @@ export const validateApiKey = async (apiKey: string): Promise<ApiKeyValidationRe
 };
 
 /**
- * 201 IQ Retry Wrapper: Handles rate limiting (429) with exponential backoff.
+ * Retry Wrapper: Handles rate limiting (429) with exponential backoff.
  */
 const callWithRetry = async <T>(fn: (ai: GoogleGenAI) => Promise<T>, maxRetries = 1): Promise<T> => {
   let retries = 0;
