@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mic, MicOff, Sparkles, Plus } from 'lucide-react';
 import { Priority } from '../../../types';
 import { PriorityPicker } from '../../ui/PriorityPicker';
+import { HelpTooltip } from '../../ui/HelpTooltip';
 
 interface TodoInputProps {
   inputValue: string;
@@ -94,6 +95,10 @@ export const TodoInput: React.FC<TodoInputProps> = ({
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-4 border-t border-white/40">
           <PriorityPicker activePriority={activePriority} onSelect={setActivePriority} />
+          <HelpTooltip 
+            content="Gesture Guide: Swipe right to delete tasks, swipe left to edit, long-press for multi-select. Tap priority dots to cycle priorities. Sparkles breaks tasks into steps."
+            position="top"
+          />
         </div>
       </form>
     </div>

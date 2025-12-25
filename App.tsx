@@ -5,6 +5,7 @@ import { registerPushNotifications, requestNotificationPermission, triggerHaptic
 import { crashReportingService } from './services/crashReportingService';
 import { analyticsService } from './services/analyticsService';
 import { preferencesService } from './services/preferencesService';
+import { userPreferencesService } from './services/userPreferencesService';
 import { AlertTriangle, Sun, WifiOff, X } from 'lucide-react';
 import { Todo } from './types';
 import { TodoCard } from './components/TodoCard';
@@ -84,6 +85,10 @@ const App: React.FC = () => {
       // Initialize analytics and preferences
       analyticsService.init();
       preferencesService.init();
+      
+      // Apply saved theme
+      const prefs = userPreferencesService.getPreferences();
+      document.documentElement.setAttribute('data-theme', prefs.ui.theme);
     };
     initializeServices();
     

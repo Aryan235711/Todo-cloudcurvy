@@ -148,6 +148,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
     }));
   };
 
+  const updateUIPreferences = (updates: Partial<UserPreferences['ui']>) => {
+    const newPrefs = { ...preferences.ui, ...updates };
+    setPreferences(prev => ({ ...prev, ui: newPrefs }));
+    userPreferencesService.updateUIPreferences(updates);
+    
+    // Apply theme to document
+    if (updates.theme) {
+      document.documentElement.setAttribute('data-theme', updates.theme);
+    }
+    
+    // Notify app of preference changes
+    window.dispatchEvent(new CustomEvent('preferencesChanged', {
+      detail: { type: 'ui', preferences: newPrefs }
+    }));
+  };
+
   const Toggle: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ 
     enabled, 
     onChange, 
@@ -331,6 +347,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* UI Preferences */}
+            <div className="bg-white/40 rounded-[2rem] p-6 border border-white/60 space-y-4">
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <Palette size={20} />
+                Theme
+              </h3>
+              
+              <div>
+                <p className="font-bold text-slate-800 mb-3">Appearance</p>
+                <div className="flex gap-2">
+                  {(['light', 'dark'] as const).map((theme) => (
+                    <button
+                      key={theme}
+                      onClick={() => updateUIPreferences({ theme })}
+                      className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                        preferences.ui.theme === theme
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/60 text-slate-600 hover:bg-white/80'
+                      }`}
+                    >
+                      {theme === 'light' ? '☀️ Focus Flow' : '🌙 Deep Focus'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

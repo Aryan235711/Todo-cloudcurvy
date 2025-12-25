@@ -126,9 +126,14 @@ export const TodoBundle: React.FC<TodoBundleProps> = ({
                   }`}>
                     {isAllCompleted ? <CheckCheck size={24} /> : isHigh ? <BellRing size={24} className="animate-bounce-slow" /> : <Package size={24} />}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center p-0.5 overflow-hidden">
-                    <div className="w-full h-full rounded-full bg-slate-100 relative">
-                      <div className={`absolute bottom-0 inset-x-0 transition-all duration-700 ${isAllCompleted ? 'bg-emerald-400' : 'bg-sky-400'}`} style={{ height: `${progressPercent}%` }} />
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-full rounded-full bg-slate-100 relative overflow-hidden">
+                      <div 
+                        className={`absolute inset-0 rounded-full transition-all duration-700 ${isAllCompleted ? 'bg-emerald-400' : 'bg-sky-400'}`} 
+                        style={{ 
+                          background: `conic-gradient(${isAllCompleted ? '#34d399' : '#60a5fa'} ${progressPercent * 3.6}deg, #f1f5f9 0deg)` 
+                        }} 
+                      />
                     </div>
                   </div>
                 </div>

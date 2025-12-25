@@ -190,7 +190,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   return (
     <div 
-      className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}
+      className={`onboarding-container fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
