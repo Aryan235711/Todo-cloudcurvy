@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Cloud, Sparkles, ShieldCheck, ArrowRight, Check, Zap, Mic, Database, Key, ChevronLeft, Newspaper } from 'lucide-react';
+import { Cloud, Sparkles, ShieldCheck, ArrowRight, Check, Zap, Mic, Database, Key, ChevronLeft, Newspaper, Bell } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 
@@ -90,6 +90,23 @@ const steps = [
         <div className="absolute inset-0 border-4 border-emerald-100 border-dashed rounded-[4rem] animate-spin-slow" />
         <div className="bg-emerald-500 text-white p-6 rounded-[2.5rem] curvy-shadow relative z-10">
           <Database size={40} />
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "Neural Nudge",
+    subtitle: "AI learns your productivity patterns.",
+    description: "Smart notifications that adapt to your behavior. Tracks procrastination risk, optimal work hours, and sends gentle nudges when you need them most. Click the bell icon to view insights.",
+    icon: <Bell size={60} className="text-rose-400" />,
+    color: "from-rose-50 to-white",
+    accent: "bg-rose-500",
+    illustration: (
+      <div className="relative w-48 h-48 flex items-center justify-center">
+        <div className="absolute inset-0 bg-rose-200/30 rounded-full animate-pulse" />
+        <div className="relative z-10 bg-white p-6 rounded-[2.6rem] curvy-shadow">
+          <Bell size={48} className="text-rose-500 animate-bounce-slow" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full animate-pulse" />
         </div>
       </div>
     )
