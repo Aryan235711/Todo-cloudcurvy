@@ -416,7 +416,7 @@ export const registerPushNotifications = async () => {
 export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning', context?: 'taskCompletion' | 'navigation' | 'notifications') => {
   scheduler.updateActivity(); // Track user interaction
   
-  // Check user preferences
+  // Check user preferences first
   const contextType = context || 'navigation';
   if (!userPreferencesService.shouldTriggerHaptic(contextType)) {
     return; // User has disabled haptic feedback for this context
@@ -465,6 +465,11 @@ export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | '
       navigator.vibrate([100, 50, 100]);
       break;
   }
+  
+  // Notify settings that haptic was triggered (for real-time sync)
+  window.dispatchEvent(new CustomEvent('hapticTriggered', { 
+    detail: { type: actualType, context: contextType } 
+  }));
 };
 
 export const requestNotificationPermission = async () => {

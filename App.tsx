@@ -16,6 +16,7 @@ import { ReviewModal } from './components/modals/ReviewModal';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 import { validateApiKey } from './services/geminiService';
 import { SettingsModal } from './components/modals/SettingsModal';
+import { HelpTooltip } from './components/ui/HelpTooltip';
 
 // Refactored Modular Components
 import { Header } from './components/layout/Header';
@@ -498,6 +499,10 @@ const App: React.FC = () => {
             <button aria-pressed={sortMode === 'smart'} onClick={() => { setSortMode('smart'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'smart' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Smart</button>
             <button aria-pressed={sortMode === 'newest'} onClick={() => { setSortMode('newest'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'newest' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Newest</button>
             <button aria-pressed={sortMode === 'priority'} onClick={() => { setSortMode('priority'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${sortMode === 'priority' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}>Priority</button>
+            <HelpTooltip 
+              content="Smart: AI-powered sorting based on urgency, deadlines, and priority. Newest: Most recently created tasks first. Priority: High → Medium → Low priority order."
+              position="bottom"
+            />
             <div className="w-[1px] h-5 bg-slate-300/40 mx-2 shrink-0" />
             <button aria-pressed={filterCategory === 'all'} onClick={() => { setFilterCategory('all'); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500'}`}>All</button>
             {CATEGORIES.map(cat => (

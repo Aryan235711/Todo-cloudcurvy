@@ -116,7 +116,16 @@ class StorageHealthAnalyzer {
   }
 
   private checkRedundancy(): boolean {
-    return true;
+    try {
+      // Check if critical data exists in multiple forms
+      const todos = localStorage.getItem('curvycloud_todos');
+      const templates = localStorage.getItem('curvycloud_templates');
+      const preferences = localStorage.getItem('curvycloud_user_preferences');
+      
+      return !!(todos && templates && preferences);
+    } catch {
+      return false;
+    }
   }
 
   private detectCorruption(): string[] {
@@ -159,17 +168,89 @@ class StorageHealthAnalyzer {
   }
 
   async optimizeStorage(): Promise<void> {
-    const templates = offlineStorageService.getTemplates();
-    if (templates.length > 100) {
-      offlineStorageService.saveTemplates(templates.slice(-100));
+    try {
+      // Clean up old todos (soft deleted > 30 days)
+      const todos = offlineStorageService.getTodos();
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      const cleanedTodos = todos.filter(todo => 
+        !todo.deletedAt || todo.deletedAt > thirtyDaysAgo
+      );
+      
+      if (cleanedTodos.length !== todos.length) {
+        offlineStorageService.saveTodos(cleanedTodos);
+      }
+      
+      // Limit templates to last 100
+      const templates = offlineStorageService.getTemplates();
+      if (templates.length > 100) {
+        const limitedTemplates = templates.slice(-100);
+        offlineStorageService.saveTemplates(limitedTemplates);
+      }
+      
+      // Clean up old cache entries
+      const cacheKeys = Object.keys(localStorage).filter(key => 
+        key.includes('cache') || key.includes('temp')
+      );
+      cacheKeys.forEach(key => {
+        try {
+          const value = localStorage.getItem(key);
+          if (value) {
+            const parsed = JSON.parse(value);
+            if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+              localStorage.removeItem(key);
+            }
+          }
+        } catch {
+          // Remove corrupted cache entries
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (error) {
+      console.warn('Storage optimization failed:', error);
     }
   }
 
   async repairCorruption(): Promise<boolean> {
     try {
-      localStorage.removeItem('curvycloud_todos');
-      localStorage.removeItem('curvycloud_templates');
-      return true;
+      const corruption = this.detectCorruption();
+      let repaired = false;
+      
+      for (const issue of corruption) {
+        if (issue.includes('curvycloud_todos')) {
+          // Try to repair todos
+          try {
+            const raw = localStorage.getItem('curvycloud_todos');
+            if (raw) {
+              // Attempt to fix common JSON issues
+              const fixed = raw.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+              JSON.parse(fixed); // Test if fix worked
+              localStorage.setItem('curvycloud_todos', fixed);
+              repaired = true;
+            }
+          } catch {
+            // If repair fails, reset to empty array
+            localStorage.setItem('curvycloud_todos', '[]');
+            repaired = true;
+          }
+        }
+        
+        if (issue.includes('curvycloud_templates')) {
+          try {
+            const raw = localStorage.getItem('curvycloud_templates');
+            if (raw) {
+              const fixed = raw.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+              JSON.parse(fixed);
+              localStorage.setItem('curvycloud_templates', fixed);
+              repaired = true;
+            }
+          } catch {
+            localStorage.setItem('curvycloud_templates', '[]');
+            repaired = true;
+          }
+        }
+      }
+      
+      return repaired;
     } catch {
       return false;
     }

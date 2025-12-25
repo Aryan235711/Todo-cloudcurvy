@@ -3,6 +3,7 @@ import { X, Settings, Key, Database, Smartphone, Bell, Palette, ToggleLeft, Togg
 import { userPreferencesService, UserPreferences } from '../../services/userPreferencesService';
 import { storageHealthAnalyzer } from '../../services/storageHealthAnalyzer';
 import { triggerHaptic } from '../../services/notificationService';
+import { HelpTooltip } from '../ui/HelpTooltip';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,9 +23,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
 
   useEffect(() => {
     if (isOpen) {
-      setPreferences(userPreferencesService.getPreferences());
-      if (activeTab === 'storage') {
-        analyzeHealth();
+      try {
+        setPreferences(userPreferencesService.getPreferences());
+        if (activeTab === 'storage') {
+          analyzeHealth();
+        }
+      } catch (error) {
+        console.error('Failed to load preferences:', error);
+        // Set safe defaults if service fails
+        setPreferences({
+          hapticFeedback: { enabled: true, intensity: 'medium', taskCompletion: true, navigation: true, notifications: true },
+          notifications: { enabled: true, quietHours: { start: 22, end: 7 }, frequency: 'medium' },
+          ui: { theme: 'auto', animations: true, compactMode: false }
+        });
       }
     }
   }, [isOpen, activeTab]);
@@ -36,13 +47,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
       setHealthReport(report);
     } catch (error) {
       console.error('Health analysis failed:', error);
+      // Set safe fallback report
+      setHealthReport({
+        overall: 'error',
+        details: {
+          capacity: { used: 0, available: 5000000, percentage: 0 },
+          integrity: { todos: false, templates: false, preferences: false },
+          performance: { readTime: -1, writeTime: -1 },
+          fragmentation: 0,
+          redundancy: false,
+          corruption: ['Analysis failed']
+        },
+        recommendations: ['Unable to analyze storage health']
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const validateApiKeyFormat = (key: string): { isValid: boolean; error?: string } => {
+    const trimmed = key.trim();
+    
+    if (!trimmed) {
+      return { isValid: false, error: 'API key cannot be empty' };
+    }
+    
+    if (trimmed.length < 20) {
+      return { isValid: false, error: 'API key too short' };
+    }
+    
+    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+      return { isValid: false, error: 'Invalid API key format' };
+    }
+    
+    return { isValid: true };
+  };
+
   const handleSaveApiKey = async () => {
     if (!inputValue.trim()) return;
+    
+    // Format validation first
+    const validation = validateApiKeyFormat(inputValue);
+    if (!validation.isValid) {
+      setSaveStatus('error');
+      triggerHaptic('warning');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      return;
+    }
+    
     setIsSaving(true);
     setSaveStatus('idle');
     try {
@@ -54,6 +106,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
     } catch (error) {
       console.error('API key save failed:', error);
       setSaveStatus('error');
+      triggerHaptic('warning');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
       setIsSaving(false);
@@ -64,6 +117,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
     const newPrefs = { ...preferences.hapticFeedback, ...updates };
     setPreferences(prev => ({ ...prev, hapticFeedback: newPrefs }));
     userPreferencesService.updateHapticPreferences(updates);
+    
+    // Notify app of preference changes
+    window.dispatchEvent(new CustomEvent('preferencesChanged', {
+      detail: { type: 'haptic', preferences: newPrefs }
+    }));
+    
     if (updates.enabled !== false) {
       triggerHaptic('light', 'navigation');
     }
@@ -73,6 +132,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
     const newPrefs = { ...preferences.notifications, ...updates };
     setPreferences(prev => ({ ...prev, notifications: newPrefs }));
     userPreferencesService.updateNotificationPreferences(updates);
+    
+    // Notify app of preference changes
+    window.dispatchEvent(new CustomEvent('preferencesChanged', {
+      detail: { type: 'notifications', preferences: newPrefs }
+    }));
   };
 
   const Toggle: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ 
@@ -266,24 +330,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                 <span className="ml-3 text-slate-600">Analyzing storage...</span>
               </div>
-            ) : healthReport ? (
+            ) : (
               <>
-                <div className="bg-white/40 rounded-[2rem] p-6 border border-white/60">
-                  <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                    <Database size={20} />
-                    Storage Health: {healthReport.overall}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="font-bold">Usage</p>
-                      <p>{healthReport.details.capacity.percentage}%</p>
-                    </div>
-                    <div>
-                      <p className="font-bold">Performance</p>
-                      <p>{healthReport.details.performance.readTime.toFixed(1)}ms</p>
+                {healthReport && (
+                  <div className="bg-white/40 rounded-[2rem] p-6 border border-white/60">
+                    <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                      <Database size={20} />
+                      Storage Health: {healthReport.overall}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-bold">Usage</p>
+                        <p>{healthReport.details.capacity.percentage}%</p>
+                      </div>
+                      <div>
+                        <p className="font-bold">Performance</p>
+                        <p>{healthReport.details.performance.readTime.toFixed(1)}ms</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex gap-3">
                   <button
@@ -292,26 +358,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
                       await storageHealthAnalyzer.optimizeStorage();
                       await analyzeHealth();
                     }}
-                    className="flex-1 py-3 px-4 bg-indigo-600 text-white rounded-[2rem] font-black text-sm flex items-center justify-center gap-2"
+                    disabled={isLoading}
+                    className="flex-1 py-3 px-4 bg-indigo-600 text-white rounded-[2rem] font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Zap size={16} />
                     Optimize
                   </button>
                   <button
                     onClick={analyzeHealth}
-                    className="py-3 px-4 bg-white/60 text-slate-700 rounded-[2rem] font-black text-sm"
+                    disabled={isLoading}
+                    className="py-3 px-4 bg-white/60 text-slate-700 rounded-[2rem] font-black text-sm disabled:opacity-50"
                   >
                     Refresh
                   </button>
+                  <HelpTooltip 
+                    content="Optimize: Cleans old deleted tasks (30+ days), limits templates to 100, removes expired cache. Refresh: Analyzes storage health and checks for corruption."
+                    position="top"
+                  />
                 </div>
               </>
-            ) : (
-              <button
-                onClick={analyzeHealth}
-                className="w-full py-4 bg-indigo-600 text-white rounded-[2rem] font-black"
-              >
-                Analyze Storage
-              </button>
             )}
           </div>
         )}

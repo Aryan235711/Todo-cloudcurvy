@@ -4,6 +4,7 @@ import { Todo } from '../types';
 import { getTaskBreakdown } from '../services/geminiService';
 import { triggerHaptic } from '../services/notificationService';
 import { shouldShowDeleteConfirmation, isGestureEnabled } from '../services/preferencesService';
+import { HelpTooltip } from './ui/HelpTooltip';
 
 interface TodoCardProps {
   todo: Todo;
@@ -305,6 +306,10 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
           >
             <Sparkles size={20} className={aiLoading ? 'animate-spin' : ''} strokeWidth={2.5} />
           </button>
+          <HelpTooltip 
+            content="Swipe right to delete, swipe left to edit, long-press for multi-select. Tap priority dot to cycle priorities. Sparkles breaks tasks into steps."
+            position="left"
+          />
         </div>
 
         {isExpanding && todo.subTasks && todo.subTasks.length > 0 && (

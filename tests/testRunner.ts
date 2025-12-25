@@ -2,6 +2,8 @@
  * Test Runner - Import this into your app for comprehensive testing
  */
 
+import { settingsTestSuite } from './settingsTests';
+
 // Remove debug logs from production
 export const removeDebugLogs = () => {
   console.log('🧹 Removing debug logs...');
@@ -89,8 +91,13 @@ export const runComprehensiveTests = async () => {
   console.log('🚀 COMPREHENSIVE APP TESTING');
   console.log('============================\n');
   
-  // Test 1: Core functionality
-  console.log('1️⃣ Testing Core Functionality...');
+  // Test 1: Settings functionality
+  console.log('1️⃣ Testing Settings Functionality...');
+  const settingsResults = await settingsTestSuite.runAllTests();
+  console.log(settingsTestSuite.generateReport());
+  
+  // Test 2: Core functionality
+  console.log('2️⃣ Testing Core Functionality...');
   const coreTests = {
     todoCreation: testTodoCreation(),
     todoCompletion: testTodoCompletion(),
@@ -98,20 +105,21 @@ export const runComprehensiveTests = async () => {
     todoDeletion: testTodoDeletion()
   };
   
-  // Test 2: Services integration
-  console.log('2️⃣ Testing Services Integration...');
+  // Test 3: Services integration
+  console.log('3️⃣ Testing Services Integration...');
   const serviceTests = testServicesIntegration();
   
-  // Test 3: UI components (if in browser)
-  console.log('3️⃣ Testing UI Components...');
+  // Test 4: UI components (if in browser)
+  console.log('4️⃣ Testing UI Components...');
   const uiTests = typeof window !== 'undefined' ? testUIComponents() : { skipped: true };
   
-  // Test 4: Data persistence
-  console.log('4️⃣ Testing Data Persistence...');
+  // Test 5: Data persistence
+  console.log('5️⃣ Testing Data Persistence...');
   const persistenceTests = testDataPersistence();
   
   // Compile results
   const allTests = {
+    settings: settingsResults,
     core: coreTests,
     services: serviceTests,
     ui: uiTests,
@@ -124,9 +132,23 @@ export const runComprehensiveTests = async () => {
   let totalPassed = 0;
   let totalTests = 0;
   
+  // Settings results
+  const settingsPassed = settingsResults.filter(r => r.passed).length;
+  totalPassed += settingsPassed;
+  totalTests += settingsResults.length;
+  console.log(`SETTINGS: ${settingsPassed}/${settingsResults.length} passed`);
+  
+  // Other test categories
   Object.entries(allTests).forEach(([category, tests]) => {
-    const passed = Object.values(tests).filter(Boolean).length;
-    const total = Object.keys(tests).length;
+    if (category === 'settings') return; // Already handled
+    
+    const passed = Array.isArray(tests) ? 
+      tests.filter(t => t.passed).length : 
+      Object.values(tests).filter(Boolean).length;
+    const total = Array.isArray(tests) ? 
+      tests.length : 
+      Object.keys(tests).length;
+    
     totalPassed += passed;
     totalTests += total;
     
@@ -143,6 +165,17 @@ export const runComprehensiveTests = async () => {
   }
   
   return allTests;
+};
+
+// Quick settings test
+export const runSettingsTests = async () => {
+  console.log('🔧 SETTINGS FUNCTIONALITY TEST');
+  console.log('==============================\n');
+  
+  const results = await settingsTestSuite.runAllTests();
+  console.log(settingsTestSuite.generateReport());
+  
+  return results;
 };
 
 const testTodoCreation = () => {
@@ -206,8 +239,10 @@ const testDataPersistence = () => {
 // Export for browser console
 if (typeof window !== 'undefined') {
   (window as any).runTests = runComprehensiveTests;
+  (window as any).runSettingsTests = runSettingsTests;
   (window as any).removeDebugLogs = removeDebugLogs;
   console.log('💡 Available commands:');
   console.log('  - runTests() - Run all tests');
+  console.log('  - runSettingsTests() - Test settings only');
   console.log('  - removeDebugLogs() - Clean console output');
 }
