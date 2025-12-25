@@ -108,6 +108,8 @@ const App: React.FC = () => {
   const [sectionVisibleCounts, setSectionVisibleCounts] = useState<Record<string, number>>({});
   const [completedSectionsOpen, setCompletedSectionsOpen] = useState<Record<string, boolean>>({});
   const [completedVisibleCounts, setCompletedVisibleCounts] = useState<Record<string, number>>({});
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedTodos, setSelectedTodos] = useState<Set<string>>(new Set());
 
   const SECTION_INITIAL = 10;
   const SECTION_STEP = 10;
@@ -193,6 +195,35 @@ const App: React.FC = () => {
     triggerHaptic('light');
   }, [setTodos]);
 
+  const handleSelectTodo = useCallback((id: string) => {
+    setSelectedTodos(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    setTodos(prev => prev.filter(todo => !selectedTodos.has(todo.id)));
+    setSelectedTodos(new Set());
+    setIsSelectionMode(false);
+    triggerHaptic('heavy');
+  }, [selectedTodos, setTodos]);
+
+  const handleBulkPriority = useCallback((priority: 'low' | 'medium' | 'high') => {
+    setTodos(prev => prev.map(todo => 
+      selectedTodos.has(todo.id) ? { ...todo, priority } : todo
+    ));
+    setSelectedTodos(new Set());
+    setIsSelectionMode(false);
+    triggerHaptic('medium');
+  }, [selectedTodos, setTodos]);
+
+  const handleBundleDelete = useCallback((bundleName: string) => {
+    setTodos(prev => prev.filter(todo => todo.templateName !== bundleName));
+    triggerHaptic('heavy');
+  }, [setTodos]);
+
   const handleUpdateSubtasks = useCallback((id: string, steps: string[]) => {
     setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, subTasks: steps } : todo));
   }, [setTodos]);
@@ -237,6 +268,8 @@ const App: React.FC = () => {
           onTodoDelete={handleTodoDelete}
           onTodoEdit={handleTodoEdit}
           onUpdateSubtasks={handleUpdateSubtasks}
+          onBundleDelete={handleBundleDelete}
+          onPriorityChange={handleTodoPriorityChange}
           isHigh={tmpl?.priority === 'high'}
         />
       );
@@ -251,6 +284,9 @@ const App: React.FC = () => {
         onEdit={handleTodoEdit}
         onUpdateSubtasks={handleUpdateSubtasks}
         onPriorityChange={handleTodoPriorityChange}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedTodos.has(node.id)}
+        onSelect={handleSelectTodo}
       />
     );
   };
@@ -352,7 +388,29 @@ const App: React.FC = () => {
             {CATEGORIES.map(cat => (
               <button aria-pressed={filterCategory === cat.value} key={cat.value} onClick={() => { setFilterCategory(cat.value); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === cat.value ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-500'}`}>{cat.label}</button>
             ))}
+            <div className="w-[1px] h-5 bg-slate-300/40 mx-2 shrink-0" />
+            <button 
+              onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedTodos(new Set()); triggerHaptic('medium'); }}
+              className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${
+                isSelectionMode ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'
+              }`}
+            >
+              Select
+            </button>
         </div>
+
+        {/* Bulk Operations Toolbar */}
+        {isSelectionMode && selectedTodos.size > 0 && (
+          <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-300">
+            <p className="text-sm font-bold text-indigo-800">{selectedTodos.size} selected</p>
+            <div className="flex gap-2">
+              <button onClick={() => handleBulkPriority('high')} className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">High</button>
+              <button onClick={() => handleBulkPriority('medium')} className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Medium</button>
+              <button onClick={() => handleBulkPriority('low')} className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Low</button>
+              <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Delete</button>
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 flex flex-col gap-6 lg:gap-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-12">

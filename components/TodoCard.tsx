@@ -11,6 +11,9 @@ interface TodoCardProps {
   onEdit: (id: string, newText: string) => void;
   onUpdateSubtasks: (id: string, subTasks: string[]) => void;
   onPriorityChange?: (id: string, priority: 'low' | 'medium' | 'high') => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
 }
 
 const priorityColors = {
@@ -29,7 +32,7 @@ const formatTime = (ts: number) => {
   return new Date(ts).toLocaleDateString();
 };
 
-export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtasks, onPriorityChange }: TodoCardProps) => {
+export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtasks, onPriorityChange, isSelectionMode, isSelected, onSelect }: TodoCardProps) => {
   TodoCard.displayName = 'TodoCard';
   const [isExpanding, setIsExpanding] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -37,6 +40,7 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
   const [editText, setEditText] = useState(todo.text);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const startX = useRef(0);
 
   const REVEAL_THRESHOLD = 30;
@@ -63,8 +67,8 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
     setIsDragging(false);
     
     if (swipeOffset > TRIGGER_THRESHOLD) {
-      triggerHaptic('heavy');
-      onDelete(todo.id);
+      triggerHaptic('warning');
+      setShowDeleteConfirm(true);
     } else if (swipeOffset < -TRIGGER_THRESHOLD) {
       triggerHaptic('medium');
       setIsEditing(true);
@@ -97,6 +101,13 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
 
   const handleToggleAction = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    if (isSelectionMode && onSelect) {
+      onSelect(todo.id);
+      triggerHaptic('light');
+      return;
+    }
+    
     onToggle(todo.id);
     
     if (!todo.completed) {
@@ -131,6 +142,12 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
     triggerHaptic('light');
   };
 
+  const handleConfirmDelete = () => {
+    triggerHaptic('heavy');
+    onDelete(todo.id);
+    setShowDeleteConfirm(false);
+  };
+
   return (
     <div className="relative overflow-hidden rounded-[2.2rem]">
       {/* Delete zone (left) */}
@@ -163,9 +180,17 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
         <div className="flex items-start gap-4 sm:gap-5 w-full">
           <button 
             onClick={handleToggleAction}
-            className={`mt-1 shrink-0 transition-all duration-500 active:scale-75 curvy-btn ${todo.completed ? 'text-emerald-500' : 'text-slate-200 hover:text-sky-400'}`}
+            className={`mt-1 shrink-0 transition-all duration-500 active:scale-75 curvy-btn ${
+              isSelectionMode 
+                ? (isSelected ? 'text-indigo-500' : 'text-slate-300')
+                : (todo.completed ? 'text-emerald-500' : 'text-slate-200 hover:text-sky-400')
+            }`}
           >
-            {todo.completed ? <CheckCircle2 size={30} /> : <Circle size={30} strokeWidth={1.5} />}
+            {isSelectionMode ? (
+              isSelected ? <CheckCircle2 size={30} /> : <Circle size={30} strokeWidth={1.5} />
+            ) : (
+              todo.completed ? <CheckCircle2 size={30} /> : <Circle size={30} strokeWidth={1.5} />
+            )}
           </button>
 
           <div className="flex-1 min-w-0 flex flex-col gap-2">
@@ -255,6 +280,27 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
           >
             {isExpanding ? <ChevronUp size={18} strokeWidth={3} /> : <ChevronDown size={18} strokeWidth={3} />}
           </button>
+        )}
+
+        {/* Delete Confirmation */}
+        {showDeleteConfirm && (
+          <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+            <p className="text-sm font-bold text-rose-800">Delete this task?</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleConfirmDelete}
+                className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn"
+              >
+                Delete
+              </button>
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-all curvy-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
