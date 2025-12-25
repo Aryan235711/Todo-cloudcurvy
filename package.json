@@ -1,12 +1,12 @@
 {
-  "name": "curvycloud-todo",
+  "name": "loop-todo",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "cap:sync": "cap sync",
     "cap:copy": "cap copy",

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Key, ShieldCheck, Unlock, ChevronRight, RotateCcw } from 'lucide-react';
+import { X, Key, ShieldCheck, Unlock, ChevronRight, RotateCcw, AlertCircle, CheckCircle } from 'lucide-react';
 
 import { Capacitor } from '@capacitor/core';
 
@@ -12,10 +12,14 @@ interface ApiKeyModalProps {
   onConnect: (manualKey?: string | null) => Promise<void>;
 }
 
+type ValidationState = 'idle' | 'validating' | 'valid' | 'invalid' | 'quota_exceeded';
+
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasApiKey, onConnect }) => {
   const [showInput, setShowInput] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [validationState, setValidationState] = useState<ValidationState>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -31,14 +35,51 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
 
   const handleSave = async () => {
     if (!inputValue.trim()) return;
+    
     setIsSaving(true);
+    setValidationState('validating');
+    setErrorMessage(null);
+    
     try {
       await onConnect(inputValue.trim());
+      setValidationState('valid');
       setShowInput(false);
       setInputValue('');
       onClose();
+    } catch (error: any) {
+      setValidationState('invalid');
+      setErrorMessage(error.message || 'Failed to validate API key. Please check your key and try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const getValidationIcon = () => {
+    switch (validationState) {
+      case 'validating':
+        return <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />;
+      case 'valid':
+        return <CheckCircle size={16} className="text-emerald-500" />;
+      case 'invalid':
+      case 'quota_exceeded':
+        return <AlertCircle size={16} className="text-rose-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getValidationMessage = () => {
+    switch (validationState) {
+      case 'validating':
+        return 'Validating API key...';
+      case 'valid':
+        return 'API key is valid!';
+      case 'invalid':
+        return errorMessage || 'Invalid API key';
+      case 'quota_exceeded':
+        return 'API key valid but quota exceeded';
+      default:
+        return null;
     }
   };
 
@@ -57,7 +98,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">BYOK Ecosystem Model</p>
           </div>
           <div className="bg-white/40 p-6 rounded-[2rem] text-sm text-slate-600 font-medium leading-relaxed border border-white/60">
-            CurvyCloud is a free, privacy-first tool. To manifest with AI, you link your own AI API key. Your key stays on-device and powers your private AI features.
+            Loop is a free, privacy-first tool. To manifest with AI, you link your own AI API key. Your key stays on-device and powers your private AI features.
 
             <div className="mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-100 text-amber-900">
               <p className="text-xs font-black uppercase tracking-widest">Free-tier warning</p>
@@ -85,10 +126,61 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, hasAp
                </>
              ) : (
                <div className="flex flex-col gap-3">
-                 <input className="w-full p-3 rounded-xl bg-white/80 border border-white/30 text-sm" placeholder="Paste your API key…" value={inputValue} onChange={e => setInputValue(e.target.value)} />
+                 <div className="relative">
+                   <input 
+                     className={`w-full p-3 pr-10 rounded-xl bg-white/80 border text-sm transition-colors ${
+                       validationState === 'invalid' || validationState === 'quota_exceeded' 
+                         ? 'border-rose-300 focus:border-rose-500' 
+                         : validationState === 'valid'
+                         ? 'border-emerald-300 focus:border-emerald-500'
+                         : 'border-white/30 focus:border-indigo-500'
+                     }`}
+                     placeholder="Paste your Gemini API key…" 
+                     value={inputValue} 
+                     onChange={e => {
+                       setInputValue(e.target.value);
+                       setValidationState('idle');
+                       setErrorMessage(null);
+                     }}
+                     disabled={isSaving}
+                   />
+                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                     {getValidationIcon()}
+                   </div>
+                 </div>
+                 
+                 {getValidationMessage() && (
+                   <div className={`text-xs font-medium px-3 py-2 rounded-lg flex items-center gap-2 ${
+                     validationState === 'valid' 
+                       ? 'bg-emerald-50 text-emerald-700'
+                       : validationState === 'validating'
+                       ? 'bg-indigo-50 text-indigo-700'
+                       : 'bg-rose-50 text-rose-700'
+                   }`}>
+                     {getValidationMessage()}
+                   </div>
+                 )}
+                 
                  <div className="flex gap-3">
-                   <button onClick={handleSave} disabled={isSaving} className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white font-black">{isSaving ? 'Saving…' : 'Save'}</button>
-                   <button onClick={() => { setShowInput(false); setInputValue(''); }} className="flex-1 py-3 rounded-2xl bg-white/30 font-black">Cancel</button>
+                   <button 
+                     onClick={handleSave} 
+                     disabled={isSaving || !inputValue.trim()}
+                     className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white font-black disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                   >
+                     {isSaving ? 'Validating…' : 'Save & Validate'}
+                   </button>
+                   <button 
+                     onClick={() => { 
+                       setShowInput(false); 
+                       setInputValue(''); 
+                       setValidationState('idle');
+                       setErrorMessage(null);
+                     }} 
+                     className="flex-1 py-3 rounded-2xl bg-white/30 font-black"
+                     disabled={isSaving}
+                   >
+                     Cancel
+                   </button>
                  </div>
                </div>
              )}

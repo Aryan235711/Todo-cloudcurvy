@@ -12,7 +12,7 @@ const steps = [
   {
     title: "Weightless Focus",
     subtitle: "Organize with a breath of fresh air.",
-    description: "CurvyCloud is a space designed to clear your mind. No clutter, just your goals floating in a sea of calm.",
+    description: "Loop is a space designed to clear your mind. No clutter, just your goals floating in a sea of calm.",
     icon: <Cloud size={60} className="text-sky-400" />,
     color: "from-sky-50 to-white",
     accent: "bg-sky-500",
@@ -65,7 +65,7 @@ const steps = [
   {
     title: "Sustainable AI",
     subtitle: "Bring your own magic.",
-    description: "CurvyCloud uses the BYOK model. Link your AI API key to enable private AI features. Free-tier keys can exhaust quickly—Manifest Kits (templates) are the most efficient way to get many tasks from a single AI call.",
+    description: "Loop uses the BYOK model. Link your AI API key to enable private AI features. Free-tier keys can exhaust quickly—Manifest Kits (templates) are the most efficient way to get many tasks from a single AI call.",
     icon: <Key size={60} className="text-indigo-400" />,
     color: "from-indigo-50 to-white",
     accent: "bg-indigo-600",

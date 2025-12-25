@@ -10,4 +10,4 @@ export const CATEGORIES: { value: Category; label: string; icon: React.ReactNode
   { value: 'other', label: 'Other', icon: <Layers size={18} />, color: 'bg-sky-100 text-sky-600' },
 ];
 
-export const APP_TITLE = "CurvyCloud";
+export const APP_TITLE = "Loop";

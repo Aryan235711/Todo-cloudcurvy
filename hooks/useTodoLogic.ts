@@ -5,8 +5,11 @@ import { generateTemplateFromPrompt } from '../services/geminiService';
 import { triggerHaptic, sendNudge } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
 import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
+import { offlineStorageService } from '../services/offlineStorageService';
+import { useNetworkStatus } from './useNetworkStatus';
 
 export const useTodoLogic = () => {
+  const { isOnline } = useNetworkStatus();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -132,24 +135,12 @@ export const useTodoLogic = () => {
     return () => clearInterval(nudgeInterval);
   }, [todos]);
 
-  // Storage Persistence
+  // Storage Persistence with Offline Support
   useEffect(() => {
-    const savedTodos = localStorage.getItem('curvycloud_todos');
-    const savedTemplates = localStorage.getItem('curvycloud_templates');
-    if (savedTodos) {
-      try {
-        setTodos(JSON.parse(savedTodos));
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn('Failed to parse saved todos', e);
-      }
-    }
-    if (savedTemplates) {
-      try {
-        setTemplates(JSON.parse(savedTemplates));
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn('Failed to parse saved templates', e);
-      }
-    }
+    const savedTodos = offlineStorageService.getTodos();
+    const savedTemplates = offlineStorageService.getTemplates();
+    setTodos(savedTodos);
+    setTemplates(savedTemplates);
     setIsInitialLoad(false);
   }, []);
 
@@ -160,16 +151,10 @@ export const useTodoLogic = () => {
       window.clearTimeout(persistTimerRef.current);
     }
 
-    // Debounce persistence to keep UI interactions instant.
+    // Debounce persistence with offline support
     persistTimerRef.current = window.setTimeout(() => {
-      try {
-        // Limit templates to last 500 to prevent storage bloat.
-        const limitedTemplates = templates.slice(-500);
-        localStorage.setItem('curvycloud_todos', JSON.stringify(todos));
-        localStorage.setItem('curvycloud_templates', JSON.stringify(limitedTemplates));
-      } catch {
-        // ignore storage failures
-      }
+      offlineStorageService.saveTodos(todos);
+      offlineStorageService.saveTemplates(templates.slice(-500));
       persistTimerRef.current = null;
     }, 250);
 
@@ -346,6 +331,13 @@ export const useTodoLogic = () => {
     if (!inputValue.trim()) return;
     if (!hasApiKey) return 'OPEN_KEY_MODAL';
     
+    // Check if offline
+    if (!isOnline) {
+      setAiError('AI features require internet connection. Working offline.');
+      setTimeout(() => setAiError(null), 4000);
+      return;
+    }
+    
     setIsMagicLoading(true);
     setAiError(null);
     triggerHaptic('medium');
@@ -429,6 +421,7 @@ export const useTodoLogic = () => {
     groupedTodos,
     handleAddTodo,
     handleMagicTemplate,
-    capitalize
+    capitalize,
+    isOnline
   };
 };

@@ -9,6 +9,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { abTestService } from './abTestService';
 import { rateLimitService } from './rateLimitService';
+import { userPreferencesService } from './userPreferencesService';
 
 const analytics = {
   track: (event: string, data: any) => {
@@ -412,11 +413,21 @@ export const registerPushNotifications = async () => {
   }
 };
 
-export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => {
+export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning', context?: 'taskCompletion' | 'navigation' | 'notifications') => {
   scheduler.updateActivity(); // Track user interaction
   
+  // Check user preferences
+  const contextType = context || 'navigation';
+  if (!userPreferencesService.shouldTriggerHaptic(contextType)) {
+    return; // User has disabled haptic feedback for this context
+  }
+  
+  // Use user's preferred intensity if available
+  const userIntensity = userPreferencesService.getHapticIntensity();
+  const actualType = type === 'light' || type === 'medium' || type === 'heavy' ? userIntensity : type;
+  
   if (Capacitor.isNativePlatform()) {
-    switch (type) {
+    switch (actualType) {
       case 'light':
         void Haptics.impact({ style: ImpactStyle.Light });
         return;
@@ -437,7 +448,7 @@ export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | '
 
   if (!('vibrate' in navigator)) return;
 
-  switch (type) {
+  switch (actualType) {
     case 'light':
       navigator.vibrate(10);
       break;
@@ -457,6 +468,11 @@ export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | '
 };
 
 export const requestNotificationPermission = async () => {
+  // Check user preferences first
+  const prefs = userPreferencesService.getPreferences();
+  if (!prefs.notifications.enabled) {
+    return false; // User has disabled notifications
+  }
   if (Capacitor.isNativePlatform()) {
     const perm = await LocalNotifications.requestPermissions();
     return perm.display === 'granted';
@@ -556,7 +572,7 @@ export const setQuietHours = (start: number, end: number) => {
 };
 
 export const getNotificationStats = () => ({
-  isQuietTime: scheduler.isQuietTime(),
+  isQuietTime: scheduler.isQuietTime() || userPreferencesService.isQuietTime(),
   nextOptimalDelay: scheduler.getOptimalDelay(),
   lastActivity: scheduler['pattern'].lastActivity,
   engagementScore: scheduler['pattern'].engagementScore,

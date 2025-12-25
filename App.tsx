@@ -2,9 +2,9 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { registerPushNotifications, requestNotificationPermission, triggerHaptic, getBehavioralInsights, getNotificationStats } from './services/notificationService';
-import { Sun, AlertTriangle, X } from 'lucide-react';
+import { crashReportingService } from './services/crashReportingService';
+import { AlertTriangle, Sun, WifiOff, X } from 'lucide-react';
 import { Todo } from './types';
-import { CATEGORIES } from './constants';
 import { TodoCard } from './components/TodoCard';
 import { Onboarding } from './components/Onboarding';
 import { useTodoLogic } from './hooks/useTodoLogic';
@@ -13,6 +13,7 @@ import { LibraryModal } from './components/modals/LibraryModal';
 import { ReviewModal } from './components/modals/ReviewModal';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 import { validateApiKey } from './services/geminiService';
+import { SettingsModal } from './components/modals/SettingsModal';
 
 // Refactored Modular Components
 import { Header } from './components/layout/Header';
@@ -21,11 +22,20 @@ import { TodoInput } from './components/features/todo/TodoInput';
 import { TodoBundle } from './components/features/todo/TodoBundle';
 import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
 import { NeuralNudgeDashboard } from './components/modals/NeuralNudgeDashboard';
+import { CATEGORIES } from './constants';
 
 const App: React.FC = () => {
   const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
   const [isNeuralNudgeOpen, setIsNeuralNudgeOpen] = useState(false);
-  const [neuralNudgeData, setNeuralNudgeData] = useState<any>(null);
+  const [neuralNudgeData, setNeuralNudgeData] = useState<{
+    procrastinationRisk: 'low' | 'medium' | 'high';
+    streak: number;
+    engagement: number;
+    isQuietTime: boolean;
+    nextOptimalDelay: number;
+    isActive: boolean;
+  } | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const {
     todos, setTodos,
@@ -47,7 +57,8 @@ const App: React.FC = () => {
     groupedTodos,
     handleAddTodo,
     handleMagicTemplate,
-    capitalize
+    capitalize,
+    isOnline
   } = useTodoLogic();
 
   // Initialize Neural Nudge System
@@ -60,6 +71,9 @@ const App: React.FC = () => {
       await requestNotificationPermission();
     };
     initializeNeuralNudge();
+    
+    // Initialize crash reporting
+    crashReportingService.init();
   }, []);
 
   // Update Neural Nudge data periodically
@@ -193,7 +207,7 @@ const App: React.FC = () => {
     return nodes;
   };
 
-  const renderCategorizedNode = (node: Todo | BundleNode, idx: number) => {
+  const renderCategorizedNode = (node: Todo | BundleNode, _idx: number) => {
     if (isBundleNode(node)) {
       const tmpl = templates.find(t => t.name === node.name);
       return (
@@ -258,7 +272,7 @@ const App: React.FC = () => {
             Large: 80% width with max constraints */}
         <Header
           onShowOnboarding={() => { setShowOnboarding(true); triggerHaptic('medium'); }}
-          onOpenKeyModal={() => setIsKeyModalOpen(true)}
+          onOpenSettings={() => { setIsSettingsOpen(true); triggerHaptic('medium'); }}
           onOpenLibrary={() => { setIsTemplatesOpen(true); triggerHaptic('medium'); }}
           onOpenNeuralNudge={() => { setIsNeuralNudgeOpen(true); triggerHaptic('medium'); }}
           hasApiKey={hasApiKey}
@@ -266,6 +280,13 @@ const App: React.FC = () => {
           motivation={motivation}
           neuralNudgeData={neuralNudgeData}
         />
+
+        {!isOnline && (
+          <div className="mb-8 p-5 bg-amber-50 border border-amber-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+            <div className="p-3 bg-white rounded-2xl text-amber-600 shadow-sm"><WifiOff size={24} /></div>
+            <p className="text-sm font-black text-amber-800 tracking-tight leading-snug">Working offline. Core features available, AI disabled.</p>
+          </div>
+        )}
 
         {aiError && (
           <div className="mb-8 p-5 bg-rose-50 border border-rose-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
@@ -552,6 +573,14 @@ const App: React.FC = () => {
             triggerHaptic('light');
           }}
           capitalize={capitalize}
+        />
+
+        {/* Settings Modal */}
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          hasApiKey={hasApiKey}
+          onConnect={handleConnectKey}
         />
 
         {/* Neural Nudge Dashboard */}

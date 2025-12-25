@@ -3,14 +3,17 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const liveReloadUrl = process.env.CAP_SERVER_URL;
 
 const config: CapacitorConfig = {
-  appId: 'com.curvycloud.todo',
-  appName: 'CurvyCloud',
+  appId: 'com.loop.todo',
+  appName: 'Loop',
   webDir: 'dist',
+  ios: {
+    preferredContentMode: 'mobile'
+  },
   ...(liveReloadUrl
     ? {
         server: {
           url: liveReloadUrl,
-          cleartext: process.env.NODE_ENV === 'development', // Only allow cleartext in dev
+          cleartext: process.env.NODE_ENV === 'development',
         },
       }
     : {}),
