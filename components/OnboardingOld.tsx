@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Cloud, Sparkles, ShieldCheck, ArrowRight, Check, Zap, Mic, Database, Key, ChevronLeft, Newspaper, Bell } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -13,7 +14,7 @@ const steps = [
     subtitle: "Organize with a breath of fresh air.",
     description: "Loop is a space designed to clear your mind. No clutter, just your goals floating in a sea of calm.",
     icon: <Cloud size={60} className="text-sky-400" />,
-    color: "from-sky-50 to-blue-50",
+    color: "from-sky-50 to-white",
     accent: "bg-sky-500",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
@@ -27,7 +28,7 @@ const steps = [
     subtitle: "Manifest your vision instantly.",
     description: "Type or speak your goal. The AI breaks down complex tasks into tiny, actionable steps so you never feel overwhelmed.",
     icon: <Sparkles size={60} className="text-indigo-400" />,
-    color: "from-indigo-50 to-purple-50",
+    color: "from-indigo-50 to-white",
     accent: "bg-indigo-500",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
@@ -46,15 +47,15 @@ const steps = [
   {
     title: "Manifest Kits",
     subtitle: "Turn one goal into a reusable template.",
-    description: "Write a clear goal, then tap Sparkles to generate a Manifest Kit. Review the steps, deselect what you don't need, then Deploy from your Manifest Vault. Example: \"7-day beginner gym routine\"",
-    icon: <Sparkles size={60} className="text-amber-400" />,
-    color: "from-amber-50 to-orange-50",
-    accent: "bg-amber-500",
+    description: "Write a clear goal, then tap Sparkles to generate a Manifest Kit. Review the steps, deselect what you don’t need, then Deploy from your Manifest Vault. Example: \"7-day beginner gym routine\"",
+    icon: <Sparkles size={60} className="text-sky-400" />,
+    color: "from-sky-50 to-white",
+    accent: "bg-sky-500",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
-        <div className="absolute inset-0 bg-amber-200/25 rounded-[3rem] animate-pulse" />
+        <div className="absolute inset-0 bg-sky-200/25 rounded-[3rem] animate-pulse" />
         <div className="relative z-10 bg-white p-6 rounded-[2.6rem] curvy-shadow flex flex-col items-center gap-3">
-          <Sparkles size={40} className="text-amber-500" />
+          <Sparkles size={40} className="text-indigo-500" />
           <div className="w-32 h-2 bg-slate-100 rounded" />
           <div className="w-24 h-2 bg-slate-100 rounded" />
         </div>
@@ -65,13 +66,13 @@ const steps = [
     title: "Sustainable AI",
     subtitle: "Bring your own magic.",
     description: "Loop uses the BYOK model. Link your AI API key to enable private AI features. Free-tier keys can exhaust quickly—Manifest Kits (templates) are the most efficient way to get many tasks from a single AI call.",
-    icon: <Key size={60} className="text-violet-400" />,
-    color: "from-violet-50 to-fuchsia-50",
-    accent: "bg-violet-600",
+    icon: <Key size={60} className="text-indigo-400" />,
+    color: "from-indigo-50 to-white",
+    accent: "bg-indigo-600",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
-        <div className="absolute inset-0 bg-violet-100 rounded-[3rem] rotate-12" />
-        <div className="bg-white p-6 rounded-[2.5rem] curvy-shadow relative z-10 text-violet-500">
+        <div className="absolute inset-0 bg-indigo-100 rounded-[3rem] rotate-12" />
+        <div className="bg-white p-6 rounded-[2.5rem] curvy-shadow relative z-10 text-indigo-500">
           <Key size={48} strokeWidth={2.5} />
         </div>
       </div>
@@ -82,7 +83,7 @@ const steps = [
     subtitle: "Your data, your device.",
     description: "We don't use clouds for storage. Everything you create stays strictly inside your local storage. Private by design, always.",
     icon: <ShieldCheck size={60} className="text-emerald-400" />,
-    color: "from-emerald-50 to-teal-50",
+    color: "from-emerald-50 to-white",
     accent: "bg-emerald-500",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
@@ -98,7 +99,7 @@ const steps = [
     subtitle: "AI learns your productivity patterns.",
     description: "Smart notifications that adapt to your behavior. Tracks procrastination risk, optimal work hours, and sends gentle nudges when you need them most. Click the bell icon to view insights.",
     icon: <Bell size={60} className="text-rose-400" />,
-    color: "from-rose-50 to-pink-50",
+    color: "from-rose-50 to-white",
     accent: "bg-rose-500",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
@@ -114,13 +115,13 @@ const steps = [
     title: "About",
     subtitle: "A note from the maker.",
     description: "If this app helped you in a meaningful way, you can visit my Substack. A token of appreciation there helps me keep building — and it genuinely makes the hard work feel worth it. ~ AlterEgo",
-    icon: <Newspaper size={60} className="text-slate-400" />,
-    color: "from-slate-50 to-gray-50",
-    accent: "bg-slate-600",
+    icon: <Newspaper size={60} className="text-indigo-400" />,
+    color: "from-indigo-50 to-white",
+    accent: "bg-indigo-600",
     illustration: (
       <div className="relative w-48 h-48 flex items-center justify-center">
-        <div className="absolute inset-0 bg-slate-100 rounded-[3rem] -rotate-6" />
-        <div className="relative z-10 bg-white p-6 rounded-[2.6rem] curvy-shadow flex items-center justify-center text-slate-500">
+        <div className="absolute inset-0 bg-indigo-100 rounded-[3rem] -rotate-6" />
+        <div className="relative z-10 bg-white p-6 rounded-[2.6rem] curvy-shadow flex items-center justify-center text-indigo-500">
           <Newspaper size={48} strokeWidth={2.5} />
         </div>
       </div>
@@ -130,34 +131,7 @@ const steps = [
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const substackUrl = 'https://substack.com/@observededucerespond';
-
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe && currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    }
-    if (isRightSwipe && currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
 
   const openSubstack = async () => {
     try {
@@ -173,6 +147,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
+      // Fixed: currentStep is a number; removed the incorrect 'prev.push' check.
       setCurrentStep(prev => prev + 1);
     } else {
       onComplete();
@@ -189,12 +164,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const isAboutStep = step.title === 'About';
 
   return (
-    <div 
-      className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
+    <div className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}>
       {currentStep > 0 && (
         <button 
           onClick={handleBack}
@@ -210,7 +180,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           {step.illustration}
         </div>
         
-        <div key={currentStep} className="animate-in slide-in-from-right-8 fade-in duration-500">
+        <div key={currentStep} className="animate-in slide-in-from-bottom-8 fade-in duration-700">
           <h1 className="text-5xl font-black text-slate-800 leading-tight mb-4 tracking-tighter">
             {step.title}
           </h1>
@@ -246,31 +216,23 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           ))}
         </div>
 
-        {currentStep === steps.length - 1 ? (
-          <button 
-            onClick={handleNext}
-            className={`w-full ${step.accent} text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3`}
-          >
-            Start the Loop <Check size={24} strokeWidth={4} />
-          </button>
-        ) : (
-          <div className="text-center">
-            <p className="text-slate-400 font-medium text-sm mb-2">Swipe to continue</p>
-            <div className="flex justify-center gap-1">
-              <ArrowRight size={16} className="text-slate-300 animate-pulse" />
-              <ArrowRight size={16} className="text-slate-300 animate-pulse delay-150" />
-              <ArrowRight size={16} className="text-slate-300 animate-pulse delay-300" />
-            </div>
-            {currentStep === 0 && (
-              <button 
-                onClick={onComplete}
-                className="text-slate-300 font-bold uppercase tracking-widest text-[11px] hover:text-slate-500 transition-colors mt-4"
-              >
-                Skip to Loop
-              </button>
-            )}
-          </div>
-        )}
+        <button 
+          onClick={handleNext}
+          className={`w-full ${step.accent} text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3`}
+        >
+          {currentStep === steps.length - 1 ? (
+            <>Ready to Float <Check size={24} strokeWidth={4} /></>
+          ) : (
+            <>Next Breeze <ArrowRight size={24} strokeWidth={4} /></>
+          )}
+        </button>
+        
+        <button 
+          onClick={onComplete}
+          className="text-slate-300 font-bold uppercase tracking-widest text-[11px] hover:text-slate-500 transition-colors"
+        >
+          Skip to Cloud
+        </button>
       </div>
     </div>
   );
