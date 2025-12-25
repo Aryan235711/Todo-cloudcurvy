@@ -190,7 +190,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   return (
     <div 
-      className={`onboarding-container fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}
+      className={`onboarding-isolated fixed inset-0 z-[100] flex flex-col bg-gradient-to-b ${step.color} transition-colors duration-700 ease-in-out px-8 pb-12 pt-[calc(var(--safe-top)+3rem)] overflow-hidden`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -222,14 +222,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </p>
 
           {isAboutStep && (
-            <button
-              onClick={() => void openSubstack()}
-              className="w-full bg-white/40 border border-white/60 text-slate-800 py-4 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.25em] transition-all active:scale-95 flex items-center justify-center gap-3 curvy-btn"
-              aria-label="Open Substack"
-              type="button"
-            >
-              <Newspaper size={18} /> Open Substack
-            </button>
+            <div className="mb-8">
+              <button
+                onClick={() => void openSubstack()}
+                className="w-full bg-white/40 border border-white/60 text-slate-800 py-4 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.25em] transition-all active:scale-95 flex items-center justify-center gap-3 curvy-btn"
+                aria-label="Open Substack"
+                type="button"
+              >
+                <Newspaper size={18} /> Open Substack
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -66,16 +66,6 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Keep onboarding in light mode always */
-.onboarding-container {
-  background: #f8fafc !important;
-  color: #0f172a !important;
-}
-
-.onboarding-container * {
-  color: inherit !important;
-}
-
 /* Dark theme glass morphism */
 [data-theme="dark"] .liquid-glass-dark {
   background: linear-gradient(135deg, 
@@ -230,9 +220,96 @@ body {
   color: rgba(203, 213, 225, 0.6) !important;
 }
 
-[data-theme="dark"] .text-slate-200 {
-  color: rgba(203, 213, 225, 0.8) !important;
+/* Dark mode text selection */
+[data-theme="dark"] ::selection {
+  background: rgba(0, 212, 255, 0.3) !important;
+  color: var(--text-primary) !important;
 }
+
+/* Dark mode header fixes - exclude app title */
+[data-theme="dark"] .bg-gradient-to-br:not(.bg-clip-text) {
+  background: linear-gradient(to bottom right, var(--text-primary), var(--accent-primary), var(--accent-success)) !important;
+}
+
+/* Keep app title gradient visible in dark mode */
+[data-theme="dark"] .bg-clip-text {
+  background: linear-gradient(to bottom right, #f8fafc, #00d4ff, #00ff88) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+/* Dark mode footer and component fixes */
+[data-theme="dark"] .text-emerald-800 {
+  color: var(--accent-success) !important;
+}
+
+[data-theme="dark"] .text-rose-300 {
+  color: var(--accent-danger) !important;
+}
+
+[data-theme="dark"] .hover\:text-rose-500:hover {
+  color: var(--accent-danger) !important;
+}
+
+[data-theme="dark"] .hover\:text-indigo-500:hover {
+  color: var(--accent-primary) !important;
+}
+
+[data-theme="dark"] .hover\:text-indigo-600:hover {
+  color: var(--accent-primary) !important;
+}
+
+[data-theme="dark"] .hover\:text-sky-500:hover {
+  color: var(--accent-primary) !important;
+}
+
+[data-theme="dark"] .hover\:text-sky-700:hover {
+  color: var(--accent-primary) !important;
+}
+
+/* Dark mode priority picker */
+[data-theme="dark"] .bg-white\/20 {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(0, 212, 255, 0.2) !important;
+}
+
+/* Dark mode confirmation modal */
+[data-theme="dark"] .bg-slate-200 {
+  background: rgba(60, 60, 70, 0.8) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-slate-700 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .hover\:bg-slate-300:hover {
+  background: rgba(70, 70, 80, 0.9) !important;
+}
+
+/* Onboarding Theme Isolation - Always Light Mode */
+.onboarding-isolated {
+  /* Override all dark theme variables with light theme values */
+  --bg-primary: #f8fafc !important;
+  --text-primary: #0f172a !important;
+  --text-secondary: #475569 !important;
+  --text-tertiary: #64748b !important;
+  --text-muted: #94a3b8 !important;
+}
+
+/* Force onboarding to ignore all dark mode overrides */
+.onboarding-isolated .bg-white { background: #ffffff !important; }
+.onboarding-isolated .bg-slate-100 { background: #f1f5f9 !important; }
+.onboarding-isolated .bg-slate-200 { background: #e2e8f0 !important; }
+.onboarding-isolated .text-slate-800 { color: #1e293b !important; }
+.onboarding-isolated .text-slate-400 { color: #94a3b8 !important; }
+.onboarding-isolated .text-slate-500 { color: #64748b !important; }
+.onboarding-isolated .text-slate-300 { color: #cbd5e1 !important; }
+.onboarding-isolated .text-slate-600 { color: #475569 !important; }
+.onboarding-isolated .border-white\/60 { border-color: rgba(255, 255, 255, 0.6) !important; }
+.onboarding-isolated .bg-white\/40 { background: rgba(255, 255, 255, 0.4) !important; }
+
 ::selection {
   background: #a5b4fc;
   color: #fff;
