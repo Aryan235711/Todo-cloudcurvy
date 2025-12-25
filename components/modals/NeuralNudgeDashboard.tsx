@@ -56,12 +56,13 @@ export const NeuralNudgeDashboard: React.FC<NeuralNudgeDashboardProps> = ({
   const engagement = getEngagementLevel(stats.engagement);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/10 backdrop-blur-md px-4 pt-[calc(var(--safe-top)+1rem)] pb-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/10 backdrop-blur-md px-4 pt-[calc(var(--safe-top)+1rem)] pb-4" onClick={onClose}>
       <div 
         className="liquid-glass-dark w-full max-w-3xl max-h-[92vh] shadow-2xl px-4 sm:px-8 py-6 sm:py-8 flex flex-col rounded-b-[3rem] overflow-y-auto transition-transform duration-500 ease-out"
         style={{
           transform: isAnimating ? 'translateY(0)' : 'translateY(-100%)'
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3">

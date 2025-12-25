@@ -169,12 +169,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-start bg-slate-900/10 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-start bg-slate-900/10 backdrop-blur-md" onClick={onClose}>
       <div 
         className="liquid-glass-dark w-full max-w-2xl h-full shadow-2xl px-6 pb-[calc(var(--safe-bottom)+1.5rem)] pt-[calc(var(--safe-top)+1.5rem)] sm:p-8 flex flex-col rounded-r-[3rem] transition-transform duration-500 ease-out"
         style={{
           transform: isAnimating ? 'translateX(0)' : 'translateX(-100%)'
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
