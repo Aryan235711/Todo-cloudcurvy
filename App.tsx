@@ -3,6 +3,8 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { registerPushNotifications, requestNotificationPermission, triggerHaptic, getBehavioralInsights, getNotificationStats } from './services/notificationService';
 import { crashReportingService } from './services/crashReportingService';
+import { analyticsService } from './services/analyticsService';
+import { preferencesService } from './services/preferencesService';
 import { AlertTriangle, Sun, WifiOff, X } from 'lucide-react';
 import { Todo } from './types';
 import { TodoCard } from './components/TodoCard';
@@ -23,6 +25,15 @@ import { TodoBundle } from './components/features/todo/TodoBundle';
 import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
 import { NeuralNudgeDashboard } from './components/modals/NeuralNudgeDashboard';
 import { CATEGORIES } from './constants';
+
+// Import test runner for development
+if (process.env.NODE_ENV === 'development') {
+  import('./tests/testRunner').then(({ runComprehensiveTests, removeDebugLogs }) => {
+    (window as any).runTests = runComprehensiveTests;
+    (window as any).removeDebugLogs = removeDebugLogs;
+    console.log('🧪 Test commands available: runTests(), removeDebugLogs()');
+  });
+}
 
 const App: React.FC = () => {
   const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
@@ -61,18 +72,20 @@ const App: React.FC = () => {
     isOnline
   } = useTodoLogic();
 
-  // Initialize Neural Nudge System
+  // Initialize services
   useEffect(() => {
-    const initializeNeuralNudge = async () => {
+    const initializeServices = async () => {
       if (Capacitor.isNativePlatform()) {
         await registerPushNotifications();
       }
-      // Request notification permissions for smart nudges
       await requestNotificationPermission();
+      
+      // Initialize analytics and preferences
+      analyticsService.init();
+      preferencesService.init();
     };
-    initializeNeuralNudge();
+    initializeServices();
     
-    // Initialize crash reporting
     crashReportingService.init();
   }, []);
 
@@ -170,30 +183,98 @@ const App: React.FC = () => {
   const handleTodoToggle = useCallback((id: string) => {
     setTodos(prev => {
       const item = prev.find(i => i.id === id);
-      if (item && !item.completed) triggerHaptic(item.priority === 'high' ? 'success' : 'medium');
-      return prev.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
+      if (item && !item.completed) {
+        triggerHaptic(item.priority === 'high' ? 'success' : 'medium');
+        // Track completion for analytics
+        analyticsService.trackTaskCompleted(id);
+        return prev.map(todo => 
+          todo.id === id ? { ...todo, completed: true, completedAt: Date.now() } : todo
+        );
+      }
+      // Handle restore from completed (clear completedAt)
+      return prev.map(todo => 
+        todo.id === id 
+          ? { ...todo, completed: !todo.completed, completedAt: todo.completed ? undefined : Date.now() }
+          : todo
+      );
     });
   }, [setTodos]);
 
   const handleTodoDelete = useCallback((id: string) => {
+    const todo = todos.find(t => t.id === id);
+    if (todo) {
+      analyticsService.trackTaskAbandoned(id);
+      setTodos(prev => {
+        const updated = prev.map(t => 
+          t.id === id ? { ...t, deletedAt: Date.now() } : t
+        );
+        return updated;
+      });
+    }
     triggerHaptic('heavy');
-    setTodos(prev => prev.filter(todo => todo.id !== id));
-  }, [setTodos]);
+  }, [todos, setTodos]);
 
   const handleTodoEdit = useCallback((id: string, newText: string) => {
     if (!newText.trim()) return;
-    setTodos(prev => prev.map(todo => 
-      todo.id === id ? { ...todo, text: capitalize(newText.trim()) } : todo
-    ));
+    
+    const todo = todos.find(t => t.id === id);
+    if (todo) {
+      // Track edit for analytics
+      analyticsService.trackTaskEdited(id, todo.text, newText.trim());
+      
+      // Add to edit history
+      const editEntry = {
+        timestamp: Date.now(),
+        oldText: todo.text,
+        newText: newText.trim(),
+        type: 'text' as const
+      };
+      
+      setTodos(prev => prev.map(t => 
+        t.id === id ? { 
+          ...t, 
+          text: capitalize(newText.trim()),
+          editHistory: [...(t.editHistory || []), editEntry]
+        } : t
+      ));
+    }
     triggerHaptic('light');
-  }, [setTodos, capitalize]);
+  }, [todos, setTodos, capitalize]);
 
   const handleTodoPriorityChange = useCallback((id: string, priority: 'low' | 'medium' | 'high') => {
-    setTodos(prev => prev.map(todo => 
-      todo.id === id ? { ...todo, priority } : todo
-    ));
+    const todo = todos.find(t => t.id === id);
+    if (todo) {
+      // Track priority change for analytics
+      analyticsService.trackPriorityChanged(id, todo.priority, priority);
+      
+      setTodos(prev => prev.map(t => 
+        t.id === id ? { ...t, priority } : t
+      ));
+    }
     triggerHaptic('light');
-  }, [setTodos]);
+  }, [todos, setTodos]);
+
+  // Clean up selection state when todos change
+  useEffect(() => {
+    const activeTodoIds = new Set(todos.filter(t => !t.deletedAt).map(t => t.id));
+    setSelectedTodos(prev => {
+      const filtered = new Set([...prev].filter(id => activeTodoIds.has(id)));
+      return filtered.size !== prev.size ? filtered : prev;
+    });
+  }, [todos]);
+
+  // Remove debug logs in production
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      const originalLog = console.log;
+      console.log = (...args) => {
+        const message = args.join(' ');
+        if (!message.includes('🔥')) {
+          originalLog(...args);
+        }
+      };
+    }
+  }, []);
 
   const handleSelectTodo = useCallback((id: string) => {
     setSelectedTodos(prev => {
@@ -204,7 +285,18 @@ const App: React.FC = () => {
   }, []);
 
   const handleBulkDelete = useCallback(() => {
-    setTodos(prev => prev.filter(todo => !selectedTodos.has(todo.id)));
+    // Use soft delete for consistency with individual delete
+    setTodos(prev => prev.map(todo => 
+      selectedTodos.has(todo.id) 
+        ? { ...todo, deletedAt: Date.now() }
+        : todo
+    ));
+    
+    // Track abandoned tasks for analytics
+    selectedTodos.forEach(id => {
+      analyticsService.trackTaskAbandoned(id);
+    });
+    
     setSelectedTodos(new Set());
     setIsSelectionMode(false);
     triggerHaptic('heavy');
@@ -220,9 +312,21 @@ const App: React.FC = () => {
   }, [selectedTodos, setTodos]);
 
   const handleBundleDelete = useCallback((bundleName: string) => {
-    setTodos(prev => prev.filter(todo => todo.templateName !== bundleName));
+    // Use soft delete and track analytics for bundle tasks
+    setTodos(prev => prev.map(todo => 
+      todo.templateName === bundleName
+        ? { ...todo, deletedAt: Date.now() }
+        : todo
+    ));
+    
+    // Track abandoned tasks for analytics
+    const bundleTasks = todos.filter(t => t.templateName === bundleName);
+    bundleTasks.forEach(task => {
+      analyticsService.trackTaskAbandoned(task.id);
+    });
+    
     triggerHaptic('heavy');
-  }, [setTodos]);
+  }, [setTodos, todos]);
 
   const handleUpdateSubtasks = useCallback((id: string, steps: string[]) => {
     setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, subTasks: steps } : todo));
@@ -590,6 +694,23 @@ const App: React.FC = () => {
           onCancel={() => setShowCustomPurgeModal(false)}
         />
       )}
+
+        {/* Delete Confirmation Modal */}
+        {showCustomPurgeModal && (
+          <CustomConfirmModal
+            message="Permanently erase everything? This includes all your tasks and custom templates."
+            onConfirm={() => {
+              setTodos([]);
+              setTemplates([]);
+              localStorage.removeItem('curvycloud_todos');
+              localStorage.removeItem('curvycloud_templates');
+              localStorage.removeItem('curvycloud_onboarding_seen');
+              window.location.reload();
+              setShowCustomPurgeModal(false);
+            }}
+            onCancel={() => setShowCustomPurgeModal(false)}
+          />
+        )}
 
         <ApiKeyModal isOpen={isKeyModalOpen} onClose={() => setIsKeyModalOpen(false)} hasApiKey={hasApiKey} onConnect={handleConnectKey} />
 

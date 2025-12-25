@@ -7,6 +7,8 @@ export interface Todo {
   text: string;
   completed: boolean;
   createdAt: number;
+  completedAt?: number;
+  deletedAt?: number; // Soft delete timestamp
   priority: Priority;
   subTasks?: string[];
   category?: Category;
@@ -15,6 +17,14 @@ export interface Todo {
   isUrgent?: boolean; // Indicates if the task is time-sensitive
   extractedTime?: string; // Stores the detected deadline/time
   lastNotified?: number;
+  editHistory?: EditHistoryEntry[]; // Audit trail
+}
+
+export interface EditHistoryEntry {
+  timestamp: number;
+  oldText: string;
+  newText: string;
+  type: 'text' | 'priority' | 'category';
 }
 
 export interface Template {

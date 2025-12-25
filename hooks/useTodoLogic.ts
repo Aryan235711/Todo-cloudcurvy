@@ -363,7 +363,12 @@ export const useTodoLogic = () => {
   };
 
   const filteredTodos = useMemo(() => {
-    let list = [...todos];
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    let list = todos.filter(t => {
+      const shouldFilter = t.deletedAt && t.deletedAt <= thirtyDaysAgo;
+      return !t.deletedAt || t.deletedAt <= thirtyDaysAgo;
+    });
+    
     if (filterCategory !== 'all') list = list.filter(t => t.category === filterCategory);
     const pMap = { high: 3, medium: 2, low: 1 };
     if (sortMode === 'smart') {

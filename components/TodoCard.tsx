@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Trash2, Edit3, Sparkles, ChevronDown, ChevronUp, 
 import { Todo } from '../types';
 import { getTaskBreakdown } from '../services/geminiService';
 import { triggerHaptic } from '../services/notificationService';
+import { shouldShowDeleteConfirmation, isGestureEnabled } from '../services/preferencesService';
 
 interface TodoCardProps {
   todo: Todo;
@@ -66,10 +67,14 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
     if (!isDragging) return;
     setIsDragging(false);
     
-    if (swipeOffset > TRIGGER_THRESHOLD) {
+    if (swipeOffset > TRIGGER_THRESHOLD && isGestureEnabled('swipeToDelete')) {
       triggerHaptic('warning');
-      setShowDeleteConfirm(true);
-    } else if (swipeOffset < -TRIGGER_THRESHOLD) {
+      if (shouldShowDeleteConfirmation()) {
+        setShowDeleteConfirm(true);
+      } else {
+        onDelete(todo.id);
+      }
+    } else if (swipeOffset < -TRIGGER_THRESHOLD && isGestureEnabled('swipeToEdit')) {
       triggerHaptic('medium');
       setIsEditing(true);
       setEditText(todo.text);
