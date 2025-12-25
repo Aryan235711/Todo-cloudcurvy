@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Brain, Target, TrendingUp, Clock, Zap, AlertTriangle } from 'lucide-react';
 
 interface NeuralNudgeDashboardProps {
@@ -27,6 +27,15 @@ export const NeuralNudgeDashboard: React.FC<NeuralNudgeDashboardProps> = ({
   insights,
   stats
 }) => {
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => setIsAnimating(true), 10);
+    } else {
+      setIsAnimating(false);
+    }
+  }, [isOpen]);
   if (!isOpen) return null;
 
   const getRiskColor = (risk: string) => {
@@ -47,81 +56,82 @@ export const NeuralNudgeDashboard: React.FC<NeuralNudgeDashboardProps> = ({
   const engagement = getEngagementLevel(stats.engagement);
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-xl">
-                <Brain className="text-indigo-600" size={24} />
-              </div>
-              <h2 className="text-xl font-black text-slate-800">Neural Nudge</h2>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-              <X size={20} className="text-slate-400" />
-            </button>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/10 backdrop-blur-md px-4 pt-[calc(var(--safe-top)+1rem)] pb-4">
+      <div 
+        className="liquid-glass-dark w-full max-w-3xl max-h-[92vh] shadow-2xl px-4 sm:px-8 py-6 sm:py-8 flex flex-col rounded-b-[3rem] overflow-y-auto transition-transform duration-500 ease-out"
+        style={{
+          transform: isAnimating ? 'translateY(0)' : 'translateY(-100%)'
+        }}
+      >
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
+            <Brain className="text-indigo-500" size={28} sm:size={32} />
+            Neural Nudge
+          </h2>
+          <button onClick={onClose} className="p-3 bg-white/60 rounded-xl">
+            <X size={20} />
+          </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="space-y-5 sm:space-y-6">
           {/* Procrastination Risk */}
-          <div className={`p-4 rounded-2xl border ${getRiskColor(insights.procrastinationRisk)}`}>
-            <div className="flex items-center gap-3 mb-2">
+          <div className={`p-4 sm:p-6 rounded-2xl border ${getRiskColor(insights.procrastinationRisk)}`}>
+            <div className="flex items-center gap-3 mb-3">
               <AlertTriangle size={20} />
               <span className="font-bold text-sm uppercase tracking-wide">Procrastination Risk</span>
             </div>
-            <div className="text-2xl font-black capitalize mb-1">{insights.procrastinationRisk}</div>
-            <div className="text-sm opacity-75">{insights.suggestedAction}</div>
+            <div className="text-2xl sm:text-3xl font-black capitalize mb-2">{insights.procrastinationRisk}</div>
+            <div className="text-sm sm:text-base opacity-75">{insights.suggestedAction}</div>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 p-4 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white/60 p-4 sm:p-5 rounded-2xl border border-white/40">
+              <div className="flex items-center gap-2 mb-3">
                 <Target size={16} className="text-slate-600" />
                 <span className="text-xs font-bold text-slate-600 uppercase">Completion</span>
               </div>
-              <div className="text-xl font-black text-slate-800">
+              <div className="text-xl sm:text-2xl font-black text-slate-800">
                 {Math.round(insights.completionProbability * 100)}%
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/60 p-4 sm:p-5 rounded-2xl border border-white/40">
+              <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-slate-600" />
                 <span className="text-xs font-bold text-slate-600 uppercase">Streak</span>
               </div>
-              <div className="text-xl font-black text-slate-800">{stats.streak}</div>
+              <div className="text-xl sm:text-2xl font-black text-slate-800">{stats.streak}</div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/60 p-4 sm:p-5 rounded-2xl border border-white/40">
+              <div className="flex items-center gap-2 mb-3">
                 <Zap size={16} className="text-slate-600" />
                 <span className="text-xs font-bold text-slate-600 uppercase">Engagement</span>
               </div>
-              <div className={`text-xl font-black ${engagement.color}`}>{engagement.label}</div>
+              <div className={`text-xl sm:text-2xl font-black ${engagement.color}`}>{engagement.label}</div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/60 p-4 sm:p-5 rounded-2xl border border-white/40">
+              <div className="flex items-center gap-2 mb-3">
                 <Clock size={16} className="text-slate-600" />
                 <span className="text-xs font-bold text-slate-600 uppercase">Optimal Hour</span>
               </div>
-              <div className="text-xl font-black text-slate-800">{insights.nextOptimalHour}:00</div>
+              <div className="text-xl sm:text-2xl font-black text-slate-800">{insights.nextOptimalHour}:00</div>
             </div>
           </div>
 
           {/* Behavior Pattern */}
-          <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-200">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="bg-indigo-50 p-4 sm:p-6 rounded-2xl border border-indigo-200">
+            <div className="flex items-center gap-3 mb-3">
               <Brain size={16} className="text-indigo-600" />
               <span className="text-xs font-bold text-indigo-600 uppercase">Behavior Pattern</span>
             </div>
-            <div className="text-sm text-indigo-800">{insights.behaviorPattern}</div>
+            <div className="text-sm sm:text-base text-indigo-800">{insights.behaviorPattern}</div>
           </div>
 
           {/* System Status */}
-          <div className="flex items-center justify-center text-xs text-slate-500">
+          <div className="flex items-center justify-center text-sm text-slate-500 py-3">
             <span>{stats.isQuietTime ? '🌙 Quiet Hours' : '☀️ Active Hours'}</span>
           </div>
           

@@ -20,6 +20,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
   const [inputValue, setInputValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => setIsAnimating(true), 10);
+    } else {
+      setIsAnimating(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -160,52 +169,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-xl p-4 animate-in fade-in duration-500">
-      <div className="liquid-glass-dark w-full max-w-2xl rounded-[3rem] p-8 shadow-2xl relative animate-in zoom-in-95 duration-500 border-2 border-white max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute right-6 top-6 p-3 bg-white/80 rounded-2xl text-slate-400 hover:text-slate-600 transition-all">
-          <X size={24} />
-        </button>
-
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-4 bg-indigo-100 rounded-[2rem] text-indigo-600">
-            <Settings size={32} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Settings</h2>
-            <p className="text-sm text-slate-500 font-medium">Manage your app preferences</p>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-8 bg-white/30 p-2 rounded-[1.8rem] border border-white/40">
-          <button
-            onClick={() => setActiveTab('api')}
-            className={`flex-1 py-3 px-4 rounded-2xl text-sm font-black uppercase tracking-wider transition-all ${
-              activeTab === 'api' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600'
-            }`}
-          >
-            <Key size={16} className="inline mr-2" />
-            API
-          </button>
-          <button
-            onClick={() => setActiveTab('preferences')}
-            className={`flex-1 py-3 px-4 rounded-2xl text-sm font-black uppercase tracking-wider transition-all ${
-              activeTab === 'preferences' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600'
-            }`}
-          >
-            <Smartphone size={16} className="inline mr-2" />
-            Prefs
-          </button>
-          <button
-            onClick={() => setActiveTab('storage')}
-            className={`flex-1 py-3 px-4 rounded-2xl text-sm font-black uppercase tracking-wider transition-all ${
-              activeTab === 'storage' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600'
-            }`}
-          >
-            <Database size={16} className="inline mr-2" />
-            Storage
+    <div className="fixed inset-0 z-[100] flex items-center justify-start bg-slate-900/10 backdrop-blur-md">
+      <div 
+        className="liquid-glass-dark w-full max-w-2xl h-full shadow-2xl px-6 pb-[calc(var(--safe-bottom)+1.5rem)] pt-[calc(var(--safe-top)+1.5rem)] sm:p-8 flex flex-col rounded-r-[3rem] transition-transform duration-500 ease-out"
+        style={{
+          transform: isAnimating ? 'translateX(0)' : 'translateX(-100%)'
+        }}
+      >
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
+            <Settings className="text-indigo-500" size={32} />
+            Settings
+          </h2>
+          <button onClick={onClose} className="p-3 bg-white/60 rounded-xl">
+            <X size={22} />
           </button>
         </div>
+
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {/* Tab Navigation */}
+          <div className="flex gap-2 mb-8 bg-white/30 p-2 rounded-[1.8rem] border border-white/40">
+            <button
+              onClick={() => setActiveTab('api')}
+              className={`flex-1 py-3 px-4 rounded-2xl text-sm font-black uppercase tracking-wider transition-all ${
+                activeTab === 'api' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600'
+              }`}
+            >
+              <Key size={16} className="inline mr-2" />
+              API
+            </button>
+            <button
+              onClick={() => setActiveTab('preferences')}
+              className={`flex-1 py-3 px-4 rounded-2xl text-sm font-black uppercase tracking-wider transition-all ${
+                activeTab === 'preferences' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600'
+              }`}
+            >
+              <Smartphone size={16} className="inline mr-2" />
+              Prefs
+            </button>
+            <button
+              onClick={() => setActiveTab('storage')}
+              className={`flex-1 py-3 px-4 rounded-2xl text-sm font-black uppercase tracking-wider transition-all ${
+                activeTab === 'storage' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600'
+              }`}
+            >
+              <Database size={16} className="inline mr-2" />
+              Storage
+            </button>
+          </div>
 
         {/* Tab Content */}
         {activeTab === 'api' && (
@@ -380,6 +391,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, h
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
