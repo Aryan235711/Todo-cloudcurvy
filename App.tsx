@@ -72,7 +72,7 @@ const App: React.FC = () => {
     isOnline
   } = useTodoLogic();
 
-  // Initialize services
+  // Initialize services and event listeners
   useEffect(() => {
     const initializeServices = async () => {
       if (Capacitor.isNativePlatform()) {
@@ -87,6 +87,17 @@ const App: React.FC = () => {
     initializeServices();
     
     crashReportingService.init();
+    
+    // Listen for long-press selection mode activation
+    const handleEnterSelectionMode = () => {
+      setIsSelectionMode(true);
+    };
+    
+    window.addEventListener('enterSelectionMode', handleEnterSelectionMode);
+    
+    return () => {
+      window.removeEventListener('enterSelectionMode', handleEnterSelectionMode);
+    };
   }, []);
 
   // Update Neural Nudge data periodically
@@ -492,26 +503,38 @@ const App: React.FC = () => {
             {CATEGORIES.map(cat => (
               <button aria-pressed={filterCategory === cat.value} key={cat.value} onClick={() => { setFilterCategory(cat.value); triggerHaptic('light'); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${filterCategory === cat.value ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-500'}`}>{cat.label}</button>
             ))}
-            <div className="w-[1px] h-5 bg-slate-300/40 mx-2 shrink-0" />
-            <button 
-              onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedTodos(new Set()); triggerHaptic('medium'); }}
-              className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap curvy-btn ${
-                isSelectionMode ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'
-              }`}
-            >
-              Select
-            </button>
         </div>
 
         {/* Bulk Operations Toolbar */}
-        {isSelectionMode && selectedTodos.size > 0 && (
+        {isSelectionMode && (
           <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-300">
-            <p className="text-sm font-bold text-indigo-800">{selectedTodos.size} selected</p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-bold text-indigo-800">
+                {selectedTodos.size > 0 ? `${selectedTodos.size} selected` : 'Long-press tasks to select'}
+              </p>
+              {selectedTodos.size === 0 && (
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" />
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-150" />
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-300" />
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
-              <button onClick={() => handleBulkPriority('high')} className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">High</button>
-              <button onClick={() => handleBulkPriority('medium')} className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Medium</button>
-              <button onClick={() => handleBulkPriority('low')} className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Low</button>
-              <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Delete</button>
+              {selectedTodos.size > 0 ? (
+                <>
+                  <button onClick={() => handleBulkPriority('high')} className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">High</button>
+                  <button onClick={() => handleBulkPriority('medium')} className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Medium</button>
+                  <button onClick={() => handleBulkPriority('low')} className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Low</button>
+                  <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Delete</button>
+                </>
+              ) : null}
+              <button 
+                onClick={() => { setIsSelectionMode(false); setSelectedTodos(new Set()); triggerHaptic('light'); }}
+                className="px-3 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-all curvy-btn"
+              >
+                Done
+              </button>
             </div>
           </div>
         )}

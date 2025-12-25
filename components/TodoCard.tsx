@@ -42,20 +42,47 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const startX = useRef(0);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressStartTime = useRef(0);
 
   const REVEAL_THRESHOLD = 30;
   const TRIGGER_THRESHOLD = 80;
+  const LONG_PRESS_DURATION = 500;
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent text selection
     startX.current = e.touches[0].clientX;
+    longPressStartTime.current = Date.now();
     setIsDragging(true);
+    
+    // Start long press timer
+    longPressTimer.current = setTimeout(() => {
+      setIsLongPressing(true);
+      triggerHaptic('medium');
+      
+      // Trigger multi-select mode and auto-select this task
+      if (onSelect) {
+        onSelect(todo.id);
+        // Notify parent to enter selection mode
+        window.dispatchEvent(new CustomEvent('enterSelectionMode'));
+      }
+    }, LONG_PRESS_DURATION);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
     const currentX = e.touches[0].clientX;
     const diff = currentX - startX.current;
+    
+    // Cancel long press if user starts swiping
+    if (Math.abs(diff) > 15 && longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+      setIsLongPressing(false);
+    }
+    
     setSwipeOffset(Math.max(-120, Math.min(120, diff)));
     
     if (Math.abs(diff) > REVEAL_THRESHOLD) {
@@ -67,19 +94,30 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
     if (!isDragging) return;
     setIsDragging(false);
     
-    if (swipeOffset > TRIGGER_THRESHOLD && isGestureEnabled('swipeToDelete')) {
-      triggerHaptic('warning');
-      if (shouldShowDeleteConfirmation()) {
-        setShowDeleteConfirm(true);
-      } else {
-        onDelete(todo.id);
-      }
-    } else if (swipeOffset < -TRIGGER_THRESHOLD && isGestureEnabled('swipeToEdit')) {
-      triggerHaptic('medium');
-      setIsEditing(true);
-      setEditText(todo.text);
+    // Clear long press timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
     
+    // Handle swipe actions only if not in long press mode
+    if (!isLongPressing) {
+      if (swipeOffset > TRIGGER_THRESHOLD && isGestureEnabled('swipeToDelete')) {
+        triggerHaptic('warning');
+        if (shouldShowDeleteConfirmation()) {
+          setShowDeleteConfirm(true);
+        } else {
+          onDelete(todo.id);
+        }
+      } else if (swipeOffset < -TRIGGER_THRESHOLD && isGestureEnabled('swipeToEdit')) {
+        triggerHaptic('medium');
+        setIsEditing(true);
+        setEditText(todo.text);
+      }
+    }
+    
+    // Reset states
+    setIsLongPressing(false);
     setSwipeOffset(0);
   };
 
@@ -174,12 +212,14 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{ transform: `translateX(${swipeOffset}px)` }}
-        className={`group relative w-full bg-white rounded-[2.2rem] p-4 sm:p-5 shadow-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-lg border-2 flex flex-col gap-3 ${
+        className={`group relative w-full bg-white rounded-[2.2rem] p-4 sm:p-5 shadow-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-lg border-2 flex flex-col gap-3 select-none ${
           todo.isUrgent && !todo.completed ? 'urgent-pulse' : 'border-transparent'
         } ${
           todo.completed ? 'border-emerald-100/40 bg-emerald-50/10 opacity-70' : 'hover:border-sky-100'
         } ${
           isDragging ? 'transition-none' : ''
+        } ${
+          isLongPressing ? 'scale-105 shadow-xl border-indigo-300 bg-indigo-50/20' : ''
         }`}
       >
         <div className="flex items-start gap-4 sm:gap-5 w-full">
