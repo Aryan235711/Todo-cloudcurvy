@@ -111,23 +111,6 @@ export const NeuralNudgeDashboard: React.FC<NeuralNudgeDashboardProps> = ({
             </div>
           </div>
 
-          {/* A/B Test Status */}
-          {insights.activeExperiments && Object.keys(insights.activeExperiments).length > 0 && (
-            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-bold text-purple-600 uppercase">A/B Tests Active</span>
-              </div>
-              <div className="space-y-1">
-                {Object.entries(insights.activeExperiments).map(([experiment, variant]) => (
-                  <div key={experiment} className="text-xs text-purple-800">
-                    <span className="font-semibold">{experiment.replace('_', ' ')}:</span> {variant}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Behavior Pattern */}
           <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-200">
             <div className="flex items-center gap-2 mb-2">
@@ -138,8 +121,7 @@ export const NeuralNudgeDashboard: React.FC<NeuralNudgeDashboardProps> = ({
           </div>
 
           {/* System Status */}
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Confidence: {Math.round(insights.confidence * 100)}%</span>
+          <div className="flex items-center justify-center text-xs text-slate-500">
             <span>{stats.isQuietTime ? '🌙 Quiet Hours' : '☀️ Active Hours'}</span>
           </div>
           

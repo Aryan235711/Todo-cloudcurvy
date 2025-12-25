@@ -43,19 +43,17 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const toggleExpanded = () => {
-    console.log('[Header] Toggle expanded:', !isExpanded);
     setIsExpanded(!isExpanded);
   };
 
   const handleActionClick = (action: () => void) => {
-    console.log('[Header] Action clicked, closing menu');
     action();
     setIsExpanded(false); // Close menu after action
   };
 
-  // Log state changes
+  // Track state changes
   useEffect(() => {
-    console.log('[Header] State changed - isExpanded:', isExpanded, 'isMobile:', isMobile);
+    // Silent state tracking in production
   }, [isExpanded, isMobile]);
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -104,7 +102,6 @@ export const Header: React.FC<HeaderProps> = ({
             
             {/* Portal Menu - Renders at document.body level above backdrop */}
             {typeof window !== 'undefined' && (() => {
-              console.log('[Header] Rendering portal menu, expanded:', isExpanded);
               return createPortal(
                 <div 
                   className={`fixed top-20 right-4 flex flex-col gap-3 z-40 transition-all duration-500 ease-out ${
@@ -173,12 +170,10 @@ export const Header: React.FC<HeaderProps> = ({
             
             {/* Portal Backdrop - Renders at document.body level */}
             {isExpanded && typeof window !== 'undefined' && (() => {
-              console.log('[Header] Rendering portal backdrop');
               return createPortal(
                 <div 
                   className="fixed inset-0 bg-black/40 backdrop-blur-md z-30"
                   onClick={() => {
-                    console.log('[Header] Backdrop clicked, closing menu');
                     setIsExpanded(false);
                   }}
                   style={{

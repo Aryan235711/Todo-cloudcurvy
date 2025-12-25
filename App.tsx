@@ -69,13 +69,6 @@ const App: React.FC = () => {
         const insights = getBehavioralInsights();
         const stats = getNotificationStats();
         
-        // Debug logging
-        console.log('Neural Nudge Debug:', {
-          insights,
-          stats,
-          streak: stats.streak || 'undefined'
-        });
-        
         setNeuralNudgeData({
           ...insights,
           streak: stats.streak,
@@ -85,7 +78,7 @@ const App: React.FC = () => {
           isActive: insights.procrastinationRisk !== 'low'
         });
       } catch (error) {
-        console.warn('Failed to update Neural Nudge data:', error);
+        // Silent error handling in production
       }
     };
 
