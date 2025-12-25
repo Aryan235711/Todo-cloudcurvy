@@ -507,8 +507,8 @@ const App: React.FC = () => {
 
         {/* Bulk Operations Toolbar */}
         {isSelectionMode && (
-          <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="flex items-center gap-3">
+          <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-bold text-indigo-800">
                 {selectedTodos.size > 0 ? `${selectedTodos.size} selected` : 'Long-press tasks to select'}
               </p>
@@ -519,16 +519,6 @@ const App: React.FC = () => {
                   <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse delay-300" />
                 </div>
               )}
-            </div>
-            <div className="flex gap-2">
-              {selectedTodos.size > 0 ? (
-                <>
-                  <button onClick={() => handleBulkPriority('high')} className="px-3 py-1.5 bg-rose-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">High</button>
-                  <button onClick={() => handleBulkPriority('medium')} className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Medium</button>
-                  <button onClick={() => handleBulkPriority('low')} className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Low</button>
-                  <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Delete</button>
-                </>
-              ) : null}
               <button 
                 onClick={() => { setIsSelectionMode(false); setSelectedTodos(new Set()); triggerHaptic('light'); }}
                 className="px-3 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-all curvy-btn"
@@ -536,6 +526,14 @@ const App: React.FC = () => {
                 Done
               </button>
             </div>
+            {selectedTodos.size > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => handleBulkPriority('high')} className="px-3 py-2 bg-rose-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">High Priority</button>
+                <button onClick={() => handleBulkPriority('medium')} className="px-3 py-2 bg-amber-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Medium Priority</button>
+                <button onClick={() => handleBulkPriority('low')} className="px-3 py-2 bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Low Priority</button>
+                <button onClick={handleBulkDelete} className="px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg transition-all curvy-btn">Delete All</button>
+              </div>
+            )}
           </div>
         )}
 
