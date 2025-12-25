@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Info, Key, Library, Cloud, Bell, Grid3X3 } from 'lucide-react';
 import { APP_TITLE } from '../../constants';
 
@@ -42,13 +43,20 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const toggleExpanded = () => {
+    console.log('[Header] Toggle expanded:', !isExpanded);
     setIsExpanded(!isExpanded);
   };
 
   const handleActionClick = (action: () => void) => {
+    console.log('[Header] Action clicked, closing menu');
     action();
     setIsExpanded(false); // Close menu after action
   };
+
+  // Log state changes
+  useEffect(() => {
+    console.log('[Header] State changed - isExpanded:', isExpanded, 'isMobile:', isMobile);
+  }, [isExpanded, isMobile]);
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case 'high': return 'text-rose-500';
@@ -85,88 +93,86 @@ export const Header: React.FC<HeaderProps> = ({
               <Grid3X3 size={24} />
             </button>
             
-            {isExpanded && (
-              <>
-                {/* Full Page Backdrop with Layered Blur */}
+            {/* Always render menu for smooth animations */}
+            <div 
+              className={`absolute right-0 top-16 flex flex-col gap-3 z-50 transition-all duration-500 ease-out ${
+                isExpanded 
+                  ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
+                  : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
+              }`}
+            >
+              <button 
+                onClick={() => handleActionClick(onOpenNeuralNudge)}
+                className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
+                  neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
+                } ${
+                  neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
+                } ${
+                  isExpanded 
+                    ? 'opacity-100 translate-y-0 delay-100' 
+                    : 'opacity-0 -translate-y-2 delay-0'
+                }`}
+              >
+                <Bell size={24} />
+                {neuralNudgeData && (
+                  <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                    getRiskDotColor(neuralNudgeData.procrastinationRisk)
+                  } ${
+                    neuralNudgeData.isActive ? 'animate-pulse' : ''
+                  }`} />
+                )}
+              </button>
+              
+              <button 
+                onClick={() => handleActionClick(onOpenKeyModal)}
+                className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
+                  hasApiKey ? 'text-emerald-500' : 'text-amber-500'
+                } ${
+                  isExpanded 
+                    ? 'opacity-100 translate-y-0 delay-200' 
+                    : 'opacity-0 -translate-y-2 delay-0'
+                }`}
+              >
+                <Key size={24} />
+                <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                  hasApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                }`} />
+              </button>
+              
+              <button 
+                onClick={() => handleActionClick(onOpenLibrary)}
+                className={`p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
+                  isExpanded 
+                    ? 'opacity-100 translate-y-0 delay-300' 
+                    : 'opacity-0 -translate-y-2 delay-0'
+                }`}
+              >
+                <Library size={24} />
+                {templatesCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-black shadow-lg">
+                    {templatesCount}
+                  </span>
+                )}
+              </button>
+            </div>
+            
+            {/* Portal Backdrop - Renders at document.body level */}
+            {isExpanded && typeof window !== 'undefined' && (() => {
+              console.log('[Header] Rendering portal backdrop');
+              return createPortal(
                 <div 
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsExpanded(false)}
-                >
-                  <div className="absolute inset-0 bg-black/40" />
-                  <div className="absolute inset-0 backdrop-blur-md" />
-                </div>
-                
-                {/* Expanded Menu with Industry-Standard Animation */}
-                <div 
-                  className="absolute right-0 top-16 flex flex-col gap-3 z-50"
-                  style={{
-                    transform: isExpanded ? 'translateY(0) scale(1)' : 'translateY(-16px) scale(0.95)',
-                    opacity: isExpanded ? 1 : 0,
-                    transition: 'all 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                  className="fixed inset-0 bg-black/40 backdrop-blur-md z-30"
+                  onClick={() => {
+                    console.log('[Header] Backdrop clicked, closing menu');
+                    setIsExpanded(false);
                   }}
-                >
-                  <button 
-                    onClick={() => handleActionClick(onOpenNeuralNudge)}
-                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
-                      neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
-                    } ${
-                      neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
-                    }`}
-                    style={{
-                      transform: isExpanded ? 'translateY(0)' : 'translateY(-8px)',
-                      opacity: isExpanded ? 1 : 0,
-                      transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                      transitionDelay: isExpanded ? '100ms' : '0ms'
-                    }}
-                  >
-                    <Bell size={24} />
-                    {neuralNudgeData && (
-                      <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-                        getRiskDotColor(neuralNudgeData.procrastinationRisk)
-                      } ${
-                        neuralNudgeData.isActive ? 'animate-pulse' : ''
-                      }`} />
-                    )}
-                  </button>
-                  
-                  <button 
-                    onClick={() => handleActionClick(onOpenKeyModal)}
-                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
-                      hasApiKey ? 'text-emerald-500' : 'text-amber-500'
-                    }`}
-                    style={{
-                      transform: isExpanded ? 'translateY(0)' : 'translateY(-8px)',
-                      opacity: isExpanded ? 1 : 0,
-                      transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                      transitionDelay: isExpanded ? '200ms' : '0ms'
-                    }}
-                  >
-                    <Key size={24} />
-                    <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-                      hasApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-                    }`} />
-                  </button>
-                  
-                  <button 
-                    onClick={() => handleActionClick(onOpenLibrary)}
-                    className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative"
-                    style={{
-                      transform: isExpanded ? 'translateY(0)' : 'translateY(-8px)',
-                      opacity: isExpanded ? 1 : 0,
-                      transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                      transitionDelay: isExpanded ? '300ms' : '0ms'
-                    }}
-                  >
-                    <Library size={24} />
-                    {templatesCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-black shadow-lg">
-                        {templatesCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
+                  style={{
+                    transition: 'all 300ms ease-out'
+                  }}
+                />,
+                document.body
+              );
+            })()}
           </div>
         ) : (
           // Desktop: Original Layout
