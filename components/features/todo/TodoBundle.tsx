@@ -12,6 +12,7 @@ interface TodoBundleProps {
   onToggleComplete: (shouldComplete: boolean) => void;
   onTodoToggle: (id: string) => void;
   onTodoDelete: (id: string) => void;
+  onTodoEdit: (id: string, newText: string) => void;
   onUpdateSubtasks: (id: string, steps: string[]) => void;
   isHigh: boolean;
 }
@@ -24,6 +25,7 @@ export const TodoBundle: React.FC<TodoBundleProps> = ({
   onToggleComplete,
   onTodoToggle,
   onTodoDelete,
+  onTodoEdit,
   onUpdateSubtasks,
   isHigh
 }) => {
@@ -101,6 +103,7 @@ export const TodoBundle: React.FC<TodoBundleProps> = ({
                 todo={t}
                 onToggle={onTodoToggle}
                 onDelete={onTodoDelete}
+                onEdit={onTodoEdit}
                 onUpdateSubtasks={onUpdateSubtasks}
               />
             ))}

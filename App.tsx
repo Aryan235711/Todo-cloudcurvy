@@ -178,6 +178,21 @@ const App: React.FC = () => {
     setTodos(prev => prev.filter(todo => todo.id !== id));
   }, [setTodos]);
 
+  const handleTodoEdit = useCallback((id: string, newText: string) => {
+    if (!newText.trim()) return;
+    setTodos(prev => prev.map(todo => 
+      todo.id === id ? { ...todo, text: capitalize(newText.trim()) } : todo
+    ));
+    triggerHaptic('light');
+  }, [setTodos, capitalize]);
+
+  const handleTodoPriorityChange = useCallback((id: string, priority: 'low' | 'medium' | 'high') => {
+    setTodos(prev => prev.map(todo => 
+      todo.id === id ? { ...todo, priority } : todo
+    ));
+    triggerHaptic('light');
+  }, [setTodos]);
+
   const handleUpdateSubtasks = useCallback((id: string, steps: string[]) => {
     setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, subTasks: steps } : todo));
   }, [setTodos]);
@@ -220,6 +235,7 @@ const App: React.FC = () => {
           onToggleComplete={(val) => handleToggleBundleCompletion(node.name, val)}
           onTodoToggle={handleTodoToggle}
           onTodoDelete={handleTodoDelete}
+          onTodoEdit={handleTodoEdit}
           onUpdateSubtasks={handleUpdateSubtasks}
           isHigh={tmpl?.priority === 'high'}
         />
@@ -232,7 +248,9 @@ const App: React.FC = () => {
         todo={node}
         onToggle={handleTodoToggle}
         onDelete={handleTodoDelete}
+        onEdit={handleTodoEdit}
         onUpdateSubtasks={handleUpdateSubtasks}
+        onPriorityChange={handleTodoPriorityChange}
       />
     );
   };
