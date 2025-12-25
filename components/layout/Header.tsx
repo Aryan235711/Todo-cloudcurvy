@@ -87,21 +87,37 @@ export const Header: React.FC<HeaderProps> = ({
             
             {isExpanded && (
               <>
-                {/* Backdrop */}
+                {/* Full Page Backdrop with Layered Blur */}
                 <div 
-                  className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+                  className="fixed inset-0 z-40"
                   onClick={() => setIsExpanded(false)}
-                />
+                >
+                  <div className="absolute inset-0 bg-black/40" />
+                  <div className="absolute inset-0 backdrop-blur-md" />
+                </div>
                 
-                {/* Expanded Menu */}
-                <div className="absolute right-0 top-16 flex flex-col gap-3 z-50 transform transition-all duration-300 ease-out animate-in slide-in-from-top-4 fade-in">
+                {/* Expanded Menu with Industry-Standard Animation */}
+                <div 
+                  className="absolute right-0 top-16 flex flex-col gap-3 z-50"
+                  style={{
+                    transform: isExpanded ? 'translateY(0) scale(1)' : 'translateY(-16px) scale(0.95)',
+                    opacity: isExpanded ? 1 : 0,
+                    transition: 'all 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                  }}
+                >
                   <button 
                     onClick={() => handleActionClick(onOpenNeuralNudge)}
-                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-lg relative transform translate-y-0 opacity-100 animate-in slide-in-from-top-2 duration-300 delay-100 ${
+                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
                       neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
                     } ${
                       neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
                     }`}
+                    style={{
+                      transform: isExpanded ? 'translateY(0)' : 'translateY(-8px)',
+                      opacity: isExpanded ? 1 : 0,
+                      transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                      transitionDelay: isExpanded ? '100ms' : '0ms'
+                    }}
                   >
                     <Bell size={24} />
                     {neuralNudgeData && (
@@ -115,9 +131,15 @@ export const Header: React.FC<HeaderProps> = ({
                   
                   <button 
                     onClick={() => handleActionClick(onOpenKeyModal)}
-                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-lg relative transform translate-y-0 opacity-100 animate-in slide-in-from-top-2 duration-300 delay-200 ${
+                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
                       hasApiKey ? 'text-emerald-500' : 'text-amber-500'
                     }`}
+                    style={{
+                      transform: isExpanded ? 'translateY(0)' : 'translateY(-8px)',
+                      opacity: isExpanded ? 1 : 0,
+                      transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                      transitionDelay: isExpanded ? '200ms' : '0ms'
+                    }}
                   >
                     <Key size={24} />
                     <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
@@ -127,7 +149,13 @@ export const Header: React.FC<HeaderProps> = ({
                   
                   <button 
                     onClick={() => handleActionClick(onOpenLibrary)}
-                    className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-lg relative transform translate-y-0 opacity-100 animate-in slide-in-from-top-2 duration-300 delay-300"
+                    className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative"
+                    style={{
+                      transform: isExpanded ? 'translateY(0)' : 'translateY(-8px)',
+                      opacity: isExpanded ? 1 : 0,
+                      transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                      transitionDelay: isExpanded ? '300ms' : '0ms'
+                    }}
                   >
                     <Library size={24} />
                     {templatesCount > 0 && (
