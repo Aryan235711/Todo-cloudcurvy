@@ -100,61 +100,76 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
                   : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
               }`}
-            >
-              <button 
-                onClick={() => handleActionClick(onOpenNeuralNudge)}
-                className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
-                  neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
-                } ${
-                  neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
-                } ${
-                  isExpanded 
-                    ? 'opacity-100 translate-y-0 delay-100' 
-                    : 'opacity-0 -translate-y-2 delay-0'
-                }`}
-              >
-                <Bell size={24} />
-                {neuralNudgeData && (
-                  <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-                    getRiskDotColor(neuralNudgeData.procrastinationRisk)
-                  } ${
-                    neuralNudgeData.isActive ? 'animate-pulse' : ''
-                  }`} />
-                )}
-              </button>
-              
-              <button 
-                onClick={() => handleActionClick(onOpenKeyModal)}
-                className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
-                  hasApiKey ? 'text-emerald-500' : 'text-amber-500'
-                } ${
-                  isExpanded 
-                    ? 'opacity-100 translate-y-0 delay-200' 
-                    : 'opacity-0 -translate-y-2 delay-0'
-                }`}
-              >
-                <Key size={24} />
-                <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-                  hasApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-                }`} />
-              </button>
-              
-              <button 
-                onClick={() => handleActionClick(onOpenLibrary)}
-                className={`p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
-                  isExpanded 
-                    ? 'opacity-100 translate-y-0 delay-300' 
-                    : 'opacity-0 -translate-y-2 delay-0'
-                }`}
-              >
-                <Library size={24} />
-                {templatesCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-black shadow-lg">
-                    {templatesCount}
-                  </span>
-                )}
-              </button>
-            </div>
+            />
+            
+            {/* Portal Menu - Renders at document.body level above backdrop */}
+            {typeof window !== 'undefined' && (() => {
+              console.log('[Header] Rendering portal menu, expanded:', isExpanded);
+              return createPortal(
+                <div 
+                  className={`fixed top-20 right-4 flex flex-col gap-3 z-40 transition-all duration-500 ease-out ${
+                    isExpanded 
+                      ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
+                      : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
+                  }`}
+                >
+                  <button 
+                    onClick={() => handleActionClick(onOpenNeuralNudge)}
+                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
+                      neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
+                    } ${
+                      neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
+                    } ${
+                      isExpanded 
+                        ? 'opacity-100 translate-y-0 delay-100' 
+                        : 'opacity-0 -translate-y-2 delay-0'
+                    }`}
+                  >
+                    <Bell size={24} />
+                    {neuralNudgeData && (
+                      <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                        getRiskDotColor(neuralNudgeData.procrastinationRisk)
+                      } ${
+                        neuralNudgeData.isActive ? 'animate-pulse' : ''
+                      }`} />
+                    )}
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleActionClick(onOpenKeyModal)}
+                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
+                      hasApiKey ? 'text-emerald-500' : 'text-amber-500'
+                    } ${
+                      isExpanded 
+                        ? 'opacity-100 translate-y-0 delay-200' 
+                        : 'opacity-0 -translate-y-2 delay-0'
+                    }`}
+                  >
+                    <Key size={24} />
+                    <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                      hasApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                    }`} />
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleActionClick(onOpenLibrary)}
+                    className={`p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-xl relative ${
+                      isExpanded 
+                        ? 'opacity-100 translate-y-0 delay-300' 
+                        : 'opacity-0 -translate-y-2 delay-0'
+                    }`}
+                  >
+                    <Library size={24} />
+                    {templatesCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-rose-500 text-white text-[10px] flex items-center justify-center rounded-full font-black shadow-lg">
+                        {templatesCount}
+                      </span>
+                    )}
+                  </button>
+                </div>,
+                document.body
+              );
+            })()}
             
             {/* Portal Backdrop - Renders at document.body level */}
             {isExpanded && typeof window !== 'undefined' && (() => {
