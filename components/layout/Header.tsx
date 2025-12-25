@@ -89,15 +89,15 @@ export const Header: React.FC<HeaderProps> = ({
               <>
                 {/* Backdrop */}
                 <div 
-                  className="fixed inset-0 bg-black/20 z-10"
+                  className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
                   onClick={() => setIsExpanded(false)}
                 />
                 
                 {/* Expanded Menu */}
-                <div className="absolute right-0 top-16 flex flex-col gap-2 z-20 animate-in slide-in-from-top-2 duration-250">
+                <div className="absolute right-0 top-16 flex flex-col gap-3 z-50 transform transition-all duration-300 ease-out animate-in slide-in-from-top-4 fade-in">
                   <button 
                     onClick={() => handleActionClick(onOpenNeuralNudge)}
-                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative animate-in slide-in-from-top-1 duration-200 delay-0 ${
+                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-lg relative transform translate-y-0 opacity-100 animate-in slide-in-from-top-2 duration-300 delay-100 ${
                       neuralNudgeData ? getRiskColor(neuralNudgeData.procrastinationRisk) : 'text-slate-400'
                     } ${
                       neuralNudgeData?.procrastinationRisk === 'high' ? 'animate-pulse' : ''
@@ -115,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
                   
                   <button 
                     onClick={() => handleActionClick(onOpenKeyModal)}
-                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative animate-in slide-in-from-top-1 duration-200 delay-75 ${
+                    className={`group p-3.5 liquid-glass-dark rounded-2xl transition-all hover:scale-105 active:scale-95 curvy-btn shadow-lg relative transform translate-y-0 opacity-100 animate-in slide-in-from-top-2 duration-300 delay-200 ${
                       hasApiKey ? 'text-emerald-500' : 'text-amber-500'
                     }`}
                   >
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
                   
                   <button 
                     onClick={() => handleActionClick(onOpenLibrary)}
-                    className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-sm relative animate-in slide-in-from-top-1 duration-200 delay-150"
+                    className="p-3.5 liquid-glass-dark rounded-2xl text-sky-600 hover:text-sky-700 transition-all hover:scale-105 active:scale-95 curvy-btn shadow-lg relative transform translate-y-0 opacity-100 animate-in slide-in-from-top-2 duration-300 delay-300"
                   >
                     <Library size={24} />
                     {templatesCount > 0 && (
