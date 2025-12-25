@@ -345,6 +345,24 @@ class SmartScheduler {
 
     return { title, body };
   }
+
+  generateMotivationalNudge(context: NotificationContext, toneVariant?: string): { title: string; body: string } {
+    const motivationContext: MotivationContext = {
+      streak: this.pattern.completionStreak,
+      engagement: this.pattern.engagementScore,
+      timeOfDay: (() => {
+        const hour = new Date().getHours();
+        return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+      })() as 'morning' | 'afternoon' | 'evening' | 'night',
+      priority: context.priority || 'medium'
+    };
+    
+    return this.generateMotivationalMessage(motivationContext);
+  }
+
+  getBehavioralInsights(): BehavioralInsight {
+    return this.analyzeBehavior();
+  }
 }
 
 const scheduler = new SmartScheduler();
@@ -488,7 +506,10 @@ export const sendNudge = async (
     });
   }
   
-  const scheduledAt = opts?.at ?? new Date(Date.now() + delayMs);
+  // Ensure scheduled time is always in the future (minimum 1 second)
+  const now = Date.now();
+  const targetTime = opts?.at?.getTime() ?? (now + delayMs);
+  const scheduledAt = new Date(Math.max(targetTime, now + 1000));
 
   if (Capacitor.isNativePlatform()) {
     const perm = await LocalNotifications.checkPermissions();
@@ -587,8 +608,9 @@ export const sendContextualNudge = async (
     rateLimitService.recordNotificationAttempt('contextual', success);
     return success;
   } catch (error) {
+    console.error(error);
     rateLimitService.recordNotificationAttempt('contextual', false);
-    throw error;
+    return false;
   }
 };
 
@@ -791,4 +813,14 @@ export const sendBehavioralIntervention = async (
     rateLimitService.recordNotificationAttempt('intervention', false);
     throw error;
   }
+};
+
+
+
+export const getPredictiveInsight = () => {
+  return scheduler.getPredictiveInsight();
+};
+
+export const getActiveExperiments = () => {
+  return abTestService.getCurrentExperiments();
 };
