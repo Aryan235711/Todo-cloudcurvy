@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { runAllNeuralNudgeTests, logTestResults, TestResult } from '../services/neuralNudgeTestSuite';
+import { runPhase2Tests, logPhase2Results, Phase2TestResult } from '../services/phase2TestRunner';
 
 interface PhaseTestResult {
   name: string;
@@ -9,8 +10,9 @@ interface PhaseTestResult {
 }
 
 export const UnifiedTestDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'neural' | 'phase1'>('neural');
+  const [activeTab, setActiveTab] = useState<'neural' | 'phase1' | 'phase2'>('neural');
   const [neuralResults, setNeuralResults] = useState<TestResult[]>([]);
+  const [phase2Results, setPhase2Results] = useState<Phase2TestResult[]>([]);
   const [phase1Tests, setPhase1Tests] = useState<PhaseTestResult[]>([
     { name: 'Error Boundary Functionality', status: 'pending' },
     { name: 'Global Error Handler', status: 'pending' },
@@ -32,6 +34,19 @@ export const UnifiedTestDashboard: React.FC = () => {
     }
   };
 
+  const runPhase2TestSuite = async () => {
+    setIsRunning(true);
+    try {
+      const results = await runPhase2Tests();
+      setPhase2Results(results);
+      logPhase2Results(results);
+    } catch (error) {
+      console.error('Phase 2 test execution failed:', error);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   const updatePhase1Test = (index: number, updates: Partial<PhaseTestResult>) => {
     setPhase1Tests(prev => prev.map((test, i) => i === index ? { ...test, ...updates } : test));
   };
@@ -43,7 +58,6 @@ export const UnifiedTestDashboard: React.FC = () => {
     updatePhase1Test(0, { status: 'running' });
     const startTime1 = Date.now();
     try {
-      // Simulate error boundary test
       window.dispatchEvent(new ErrorEvent('error', {
         message: 'Test error boundary',
         filename: 'test.js',
@@ -120,6 +134,9 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const neuralAllPassed = neuralResults.length > 0 && neuralResults.every(r => r.passed);
   const phase1AllPassed = phase1Tests.every(t => t.status === 'passed');
+  const phase2AllPassed = phase2Results.length > 0 && phase2Results.every(r => r.status === 'passed');
+  const phase2Coverage = phase2Results.length > 0 ? 
+    phase2Results.filter(r => r.coverage).reduce((sum, r) => sum + (r.coverage || 0), 0) / phase2Results.filter(r => r.coverage).length : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -137,7 +154,7 @@ export const UnifiedTestDashboard: React.FC = () => {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Loop Community Test Suite</h1>
-          <p className="text-lg text-gray-600">Comprehensive testing for neural nudge system and stability improvements</p>
+          <p className="text-lg text-gray-600">Neural nudge system, stability, and testing infrastructure</p>
         </div>
 
         {/* Tab Navigation */}
@@ -145,23 +162,33 @@ export const UnifiedTestDashboard: React.FC = () => {
           <div className="bg-white rounded-lg p-1 shadow-sm border">
             <button
               onClick={() => setActiveTab('neural')}
-              className={`px-6 py-3 rounded-md font-semibold transition-colors ${
+              className={`px-4 py-3 rounded-md font-semibold transition-colors ${
                 activeTab === 'neural'
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              🧠 Neural Nudge Tests
+              🧠 Neural Nudge
             </button>
             <button
               onClick={() => setActiveTab('phase1')}
-              className={`px-6 py-3 rounded-md font-semibold transition-colors ${
+              className={`px-4 py-3 rounded-md font-semibold transition-colors ${
                 activeTab === 'phase1'
                   ? 'bg-green-600 text-white'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              🔧 Phase 1 Stability
+              🔧 Phase 1
+            </button>
+            <button
+              onClick={() => setActiveTab('phase2')}
+              className={`px-4 py-3 rounded-md font-semibold transition-colors ${
+                activeTab === 'phase2'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              🧪 Phase 2
             </button>
           </div>
         </div>
@@ -267,10 +294,74 @@ export const UnifiedTestDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* Phase 2 Tab */}
+        {activeTab === 'phase2' && (
+          <div>
+            <div className="mb-6 text-center">
+              <button
+                onClick={runPhase2TestSuite}
+                disabled={isRunning}
+                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
+                  isRunning 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isRunning ? 'Running Testing Infrastructure...' : 'Run Phase 2 Tests'}
+              </button>
+              {phase2AllPassed && phase2Coverage >= 60 && (
+                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
+                  ✅ Phase 2 Ready for Commit
+                </div>
+              )}
+            </div>
+
+            {phase2Results.length > 0 && (
+              <div className="space-y-4">
+                {phase2Results.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`p-6 rounded-xl border-2 transition-all ${
+                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
+                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
+                      result.status === 'running' ? 'border-blue-200 bg-blue-50' :
+                      'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">
+                          {result.status === 'running' ? '⏳' :
+                           result.status === 'passed' ? '✅' :
+                           result.status === 'failed' ? '❌' : '⚪'}
+                        </span>
+                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
+                      </div>
+                      <div className="text-right">
+                        {result.duration && (
+                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
+                        )}
+                        {result.coverage && (
+                          <span className="text-sm font-medium text-blue-600">{result.coverage.toFixed(1)}% coverage</span>
+                        )}
+                      </div>
+                    </div>
+                    {result.details && (
+                      <div className="bg-white p-4 rounded-lg">
+                        <div className="text-sm text-gray-600">{result.details}</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Summary */}
         <div className="mt-8 p-6 bg-white rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Test Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <h4 className="font-medium text-gray-700 mb-2">Neural Nudge System</h4>
               <p className="text-sm text-gray-600">
@@ -284,6 +375,14 @@ export const UnifiedTestDashboard: React.FC = () => {
               <p className="text-sm text-gray-600">
                 {phase1AllPassed ? '✅ All tests passed - Ready for commit' : 
                  '⚠️ Tests pending or failed'}
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Phase 2 Testing</h4>
+              <p className="text-sm text-gray-600">
+                {phase2Results.length === 0 ? 'Not tested yet' :
+                 phase2AllPassed && phase2Coverage >= 60 ? `✅ All tests passed - ${phase2Coverage.toFixed(1)}% coverage` :
+                 `⚠️ ${phase2Coverage.toFixed(1)}% coverage - Needs improvement`}
               </p>
             </div>
           </div>
