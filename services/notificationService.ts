@@ -12,6 +12,83 @@ import { rateLimitService } from './rateLimitService';
 import { userPreferencesService } from './userPreferencesService';
 import { securityService } from './securityService';
 
+// Intelligent Feedback Engine for real-time learning
+class IntelligentFeedbackEngine {
+  private userModels: Map<string, any>;
+  private learningRate: number;
+
+  constructor() {
+    this.userModels = new Map();
+    this.learningRate = 0.1;
+  }
+
+  processUserFeedback(userId: string, messageType: string, outcome: any) {
+    const model = this.getUserModel(userId);
+    const signal = this.calculateFeedbackSignal(outcome);
+    
+    // Update message effectiveness
+    if (!model.messageEffectiveness[messageType]) {
+      model.messageEffectiveness[messageType] = 0.5;
+    }
+    model.messageEffectiveness[messageType] += signal * this.learningRate;
+    model.messageEffectiveness[messageType] = Math.max(0, Math.min(1, model.messageEffectiveness[messageType]));
+    
+    // Store interaction for pattern recognition
+    model.interactions.push({
+      timestamp: Date.now(),
+      messageType,
+      outcome,
+      signal
+    });
+    
+    // Keep only recent interactions
+    if (model.interactions.length > 50) {
+      model.interactions = model.interactions.slice(-50);
+    }
+  }
+
+  calculateFeedbackSignal(outcome: any) {
+    let signal = 0;
+    if (outcome.completed) signal += 1.0;
+    if (outcome.engaged) signal += 0.5;
+    if (outcome.ignored) signal -= 0.5;
+    if (outcome.frustrated) signal -= 0.8;
+    return Math.max(-1, Math.min(1, signal));
+  }
+
+  getUserModel(userId: string) {
+    if (!this.userModels.has(userId)) {
+      this.userModels.set(userId, {
+        messageEffectiveness: {},
+        interactions: [],
+        createdAt: Date.now()
+      });
+    }
+    return this.userModels.get(userId);
+  }
+
+  getOptimalMessageType(userId: string, context: any) {
+    const model = this.getUserModel(userId);
+    const messageTypes = ['motivational', 'gentle', 'urgent', 'celebration'];
+    
+    // Find most effective message type for this user
+    let bestType = 'motivational';
+    let bestScore = 0.5;
+    
+    messageTypes.forEach(type => {
+      const effectiveness = model.messageEffectiveness[type] || 0.5;
+      if (effectiveness > bestScore) {
+        bestScore = effectiveness;
+        bestType = type;
+      }
+    });
+    
+    return { type: bestType, confidence: bestScore };
+  }
+}
+
+const intelligentFeedback = new IntelligentFeedbackEngine();
+
 const analytics = {
   track: (event: string, data: Record<string, unknown>) => {
     const sanitizedData = securityService.sanitizeAnalyticsData(data);
@@ -860,4 +937,19 @@ export const getPredictiveInsight = () => {
 
 export const getActiveExperiments = () => {
   return abTestService.getCurrentExperiments();
+};
+
+// Intelligent feedback functions
+export const recordUserFeedback = (userId: string, messageType: string, outcome: { completed: boolean; engaged: boolean; ignored: boolean; frustrated: boolean }) => {
+  intelligentFeedback.processUserFeedback(userId, messageType, outcome);
+};
+
+export const getIntelligentInsights = (userId: string) => {
+  const model = intelligentFeedback.getUserModel(userId);
+  return {
+    messageEffectiveness: model.messageEffectiveness,
+    totalInteractions: model.interactions.length,
+    recentPerformance: model.interactions.slice(-10).map(i => ({ type: i.messageType, signal: i.signal })),
+    optimalMessageType: intelligentFeedback.getOptimalMessageType(userId, {})
+  };
 };
