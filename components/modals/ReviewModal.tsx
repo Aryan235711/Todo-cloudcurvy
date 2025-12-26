@@ -74,7 +74,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ template, onClose, sel
               <span className="text-[10px] font-black uppercase text-slate-400">{selectedIndices.size} selected</span>
             </div>
             <button onClick={onToggleAll} className="text-[10px] font-black uppercase text-sky-600 bg-sky-50 px-4 py-2 rounded-xl flex items-center gap-2">
-              {selectedIndices.size === template.items.length ? 'Clear' : 'Select All'}
+              {selectedIndices.size === (template.items || []).length ? 'Clear' : 'Select All'}
               <RotateCcw size={14} />
             </button>
           </div>
@@ -82,7 +82,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ template, onClose, sel
         <div className="flex-1 min-h-0 flex flex-col">
           <div ref={scrollRef} tabIndex={-1} className="flex-1 overflow-y-auto p-6 sm:p-12 pt-4 pb-36 no-scrollbar relative">
             <div className="space-y-4">
-              {template.items.map((item, idx) => (
+              {(template.items || []).map((item, idx) => (
                 <button key={idx} onClick={() => onToggleIndex(idx)} className={`w-full text-left p-5 rounded-[2.2rem] border-2 transition-all flex items-center justify-between ${selectedIndices.has(idx) ? 'border-sky-400 bg-sky-50 shadow-md' : 'border-white/60 bg-white/20'}`}>
                   <span className="font-bold text-lg truncate flex-1 pr-2">{item}</span>
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${selectedIndices.has(idx) ? 'bg-sky-500 border-sky-500 text-white shadow-lg' : 'border-slate-200'}`}>{selectedIndices.has(idx) && <Check size={16} strokeWidth={4} />}</div>

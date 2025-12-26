@@ -23,6 +23,24 @@ export const ErrorBoundary: React.FC<Props> = ({ children }) => {
       console.error('🚨 Global error:', event.error);
       
       try {
+        // Log to activity logger for structured export
+        import('../services/activityLogger').then(({ activityLogger }) => {
+          activityLogger.log(
+            'system',
+            'javascript_error',
+            {
+              errorMessage: event.message,
+              errorStack: event.error?.stack?.substring(0, 500),
+              errorType: event.error?.name || 'Error',
+              timestamp: Date.now(),
+              severity: 'critical',
+              url: window.location.href
+            },
+            'ErrorBoundary',
+            { duration: 0, memory: (performance as any).memory?.usedJSHeapSize }
+          );
+        });
+        
         if (typeof window !== 'undefined' && window.analytics?.track) {
           window.analytics.track('app_crash', {
             error: event.message,

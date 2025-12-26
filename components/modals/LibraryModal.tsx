@@ -8,12 +8,12 @@ interface LibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   templates: Template[];
-  setTemplates: React.Dispatch<React.SetStateAction<Template[]>>;
+  setTemplates: (templates: Template[]) => void;
   onDeploy: (tmpl: Template) => void;
   capitalize: (str: string) => string;
 }
 
-export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, templates, setTemplates, onDeploy, capitalize }) => {
+export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, templates = [], setTemplates, onDeploy, capitalize }) => {
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editTemplateData, setEditTemplateData] = useState<Template | null>(null);
@@ -56,7 +56,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
 
   const globalTagCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const tmpl of templates) {
+    for (const tmpl of (templates || [])) {
       const uniq = new Set<string>((tmpl.tags || []).map(normalizeTag).filter(isNonEmptyTag));
       for (const t of uniq) counts.set(t, (counts.get(t) ?? 0) + 1);
     }
@@ -64,9 +64,9 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
   }, [templates]);
 
   const primaryTagByTemplateId = useMemo(() => {
-    const totalTemplates = Math.max(1, templates.length);
+    const totalTemplates = Math.max(1, (templates || []).length);
     const pickPrimary = (tags: string[]) => {
-      const uniq = [...new Set<string>(tags.map(normalizeTag).filter(isNonEmptyTag))];
+      const uniq = [...new Set<string>((tags || []).map(normalizeTag).filter(isNonEmptyTag))];
       if (uniq.length === 0) return null;
 
       let best: string | null = null;
@@ -87,7 +87,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
     };
 
     const map = new Map<string, string | null>();
-    for (const tmpl of templates) map.set(tmpl.id, pickPrimary(tmpl.tags || []));
+    for (const tmpl of (templates || [])) map.set(tmpl.id, pickPrimary(tmpl.tags || []));
     return map;
   }, [templates, globalTagCounts]);
 
@@ -95,7 +95,7 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
     const counts = new Map<string, number>();
     const display = new Map<string, string>();
 
-    for (const tmpl of templates) {
+    for (const tmpl of (templates || [])) {
       const primary = primaryTagByTemplateId.get(tmpl.id);
       if (!primary) continue;
       counts.set(primary, (counts.get(primary) ?? 0) + 1);
@@ -119,8 +119,8 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
 
   const visibleTemplates = useMemo(() => {
     const filtered = selectedTag
-      ? templates.filter(tmpl => (primaryTagByTemplateId.get(tmpl.id) || '') === selectedTag)
-      : templates;
+      ? (templates || []).filter(tmpl => (primaryTagByTemplateId.get(tmpl.id) || '') === selectedTag)
+      : (templates || []);
 
     return filtered.slice().sort((a, b) => {
       const pMap = { high: 3, medium: 2, low: 1 };
@@ -140,10 +140,11 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
     const sanitized: Template = {
       ...editTemplateData,
       name: capitalize(editTemplateData.name.trim()),
-      items: editTemplateData.items.map(i => capitalize(i.trim())),
+      items: (editTemplateData.items || []).map(i => capitalize(i.trim())),
       priority: editTemplateData.priority || 'medium'
     };
-    setTemplates(prev => prev.map(t => t.id === sanitized.id ? sanitized : t));
+    const updatedTemplates = templates.map(t => t.id === sanitized.id ? sanitized : t);
+    setTemplates(updatedTemplates);
     setEditingTemplateId(null);
     setEditTemplateData(null);
   };
@@ -239,19 +240,19 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
                                 ))}
                               </div>
                             </div>
-                            {editTemplateData?.items.map((item, i) => (
+                            {(editTemplateData?.items || []).map((item, i) => (
                               <div key={i} className="flex gap-2">
                                 <input value={item} onChange={(e) => {
                                   const next = [...(editTemplateData?.items || [])];
                                   next[i] = capitalize(e.target.value);
                                   setEditTemplateData(prev => prev ? { ...prev, items: next } : null);
                                 }} className="flex-1 bg-slate-50 p-2 rounded-lg text-sm font-semibold border" />
-                                <button onClick={() => setEditTemplateData(prev => prev ? { ...prev, items: prev.items.filter((_, idx) => idx !== i) } : null)} className="p-2 text-rose-500"><Trash2 size={16} /></button>
+                                <button onClick={() => setEditTemplateData(prev => prev ? { ...prev, items: (prev.items || []).filter((_, idx) => idx !== i) } : null)} className="p-2 text-rose-500"><Trash2 size={16} /></button>
                               </div>
                             ))}
-                            <button onClick={() => setEditTemplateData(prev => prev ? { ...prev, items: [...prev.items, 'New Intent'] } : null)} className="w-full py-2 border-2 border-dashed border-sky-100 rounded-xl text-sky-500 text-xs font-black uppercase">+ Add Item</button>
+                            <button onClick={() => setEditTemplateData(prev => prev ? { ...prev, items: [...(prev.items || []), 'New Intent'] } : null)} className="w-full py-2 border-2 border-dashed border-sky-100 rounded-xl text-sky-500 text-xs font-black uppercase">+ Add Item</button>
                         </div>
-                      ) : tmpl.items.map((item, i) => (
+                      ) : (tmpl.items || []).map((item, i) => (
                         <div key={i} className="text-xs font-semibold text-slate-600 flex items-center gap-3"><div className="w-2 h-2 bg-sky-400 rounded-full shrink-0" /> <span className="truncate">{item}</span></div>
                       ))}
                     </div>
@@ -278,7 +279,8 @@ export const LibraryModal: React.FC<LibraryModalProps> = ({ isOpen, onClose, tem
         <CustomConfirmModal
           message={`Delete “${pendingDeleteTemplate.name}” from your Manifest Vault?`}
           onConfirm={() => {
-            setTemplates(prev => prev.filter(t => t.id !== pendingDeleteTemplate.id));
+            const updatedTemplates = templates.filter(t => t.id !== pendingDeleteTemplate.id);
+            setTemplates(updatedTemplates);
             if (expandedTemplateId === pendingDeleteTemplate.id) setExpandedTemplateId(null);
             if (editingTemplateId === pendingDeleteTemplate.id) {
               setEditingTemplateId(null);

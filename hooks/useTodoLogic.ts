@@ -22,6 +22,8 @@ export const useTodoLogic = () => {
     updateTodo, 
     addTemplate, 
     deleteTemplate, 
+    updateTemplate,
+    setTemplates,
     loadTodos, 
     loadTemplates 
   } = useTodoStore();
@@ -363,7 +365,7 @@ export const useTodoLogic = () => {
       const newTemplate: Template = {
         id: createId(),
         name: capitalize(data.name),
-        items: data.items.map(i => capitalize(i)),
+        items: (data.items || []).map(i => capitalize(i)),
         category: data.category as Category,
         tags: data.tags,
         priority: 'medium'
@@ -371,7 +373,7 @@ export const useTodoLogic = () => {
       addTemplate(newTemplate);
       setInputValue('');
       setReviewingTemplate(newTemplate);
-      setSelectedReviewIndices(new Set(newTemplate.items.map((_, i) => i)));
+      setSelectedReviewIndices(new Set((newTemplate.items || []).map((_, i) => i)));
     } catch (err) {
        handleError(err);
     } finally {
@@ -380,7 +382,9 @@ export const useTodoLogic = () => {
   };
 
   const filteredTodos = useMemo(() => {
-    let list = todos;
+    // Ensure todos is always an array
+    const safeTodos = Array.isArray(todos) ? todos : [];
+    let list = safeTodos;
     
     if (filterCategory !== 'all') list = list.filter(t => t.category === filterCategory);
     const pMap = { high: 3, medium: 2, low: 1 };
@@ -410,7 +414,11 @@ export const useTodoLogic = () => {
     const groups: Record<string, Todo[]> = { Today: [], Yesterday: [], Earlier: [] };
     const now = new Date().toDateString();
     const yesterday = new Date(Date.now() - 86400000).toDateString();
-    filteredTodos.forEach(t => {
+    
+    // Ensure filteredTodos is always an array
+    const safeFilteredTodos = Array.isArray(filteredTodos) ? filteredTodos : [];
+    
+    safeFilteredTodos.forEach(t => {
       const d = new Date(t.createdAt).toDateString();
       if (d === now) groups.Today.push(t);
       else if (d === yesterday) groups.Yesterday.push(t);
@@ -427,6 +435,8 @@ export const useTodoLogic = () => {
     updateTodo,
     addTemplate,
     deleteTemplate,
+    updateTemplate,
+    setTemplates,
     inputValue, setInputValue,
     activePriority, setActivePriority,
     sortMode, setSortMode,

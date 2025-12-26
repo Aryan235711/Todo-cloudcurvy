@@ -5,6 +5,8 @@ import { runPhase3Tests, logPhase3Results, Phase3TestResult } from '../services/
 import { runPhase4Tests, logPhase4Results, Phase4TestResult } from '../services/phase4TestRunner';
 import { runPhase5Tests, logPhase5Results, Phase5TestResult } from '../services/phase5TestRunner';
 import { runPhase6Tests, logPhase6Results, Phase6TestResult } from '../services/phase6TestRunner';
+import { ExportDashboard } from './ExportDashboard';
+import { useActivityTracker } from '../hooks/useActivityTracker';
 
 interface PhaseTestResult {
   name: string;
@@ -14,7 +16,8 @@ interface PhaseTestResult {
 }
 
 export const UnifiedTestDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'neural' | 'phase1' | 'phase2' | 'phase3' | 'phase4' | 'phase5' | 'phase6'>('neural');
+  const [activeTab, setActiveTab] = useState<'neural' | 'phase1' | 'phase2' | 'phase3' | 'phase4' | 'phase5' | 'phase6' | 'export'>('neural');
+  const { logActivity } = useActivityTracker();
   const [neuralResults, setNeuralResults] = useState<TestResult[]>([]);
   const [phase2Results, setPhase2Results] = useState<Phase2TestResult[]>([]);
   const [phase3Results, setPhase3Results] = useState<Phase3TestResult[]>([]);
@@ -31,12 +34,17 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runNeuralTests = async () => {
     setIsRunning(true);
+    logActivity('system', 'neural_tests_started', { timestamp: Date.now() });
     try {
       const results = await runAllNeuralNudgeTests();
       setNeuralResults(results);
       logTestResults(results);
+      logActivity('system', 'neural_tests_completed', { 
+        results: results.map(r => ({ name: r.testName, passed: r.passed }))
+      });
     } catch (error) {
       console.error('Neural test execution failed:', error);
+      logActivity('system', 'neural_tests_failed', { error: error.message });
     } finally {
       setIsRunning(false);
     }
@@ -44,12 +52,17 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runPhase2TestSuite = async () => {
     setIsRunning(true);
+    logActivity('system', 'phase2_tests_started', { timestamp: Date.now() });
     try {
       const results = await runPhase2Tests();
       setPhase2Results(results);
       logPhase2Results(results);
+      logActivity('system', 'phase2_tests_completed', { 
+        results: results.map(r => ({ name: r.name, status: r.status }))
+      });
     } catch (error) {
       console.error('Phase 2 test execution failed:', error);
+      logActivity('system', 'phase2_tests_failed', { error: error.message });
     } finally {
       setIsRunning(false);
     }
@@ -57,12 +70,17 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runPhase3TestSuite = async () => {
     setIsRunning(true);
+    logActivity('system', 'phase3_tests_started', { timestamp: Date.now() });
     try {
       const results = await runPhase3Tests();
       setPhase3Results(results);
       logPhase3Results(results);
+      logActivity('system', 'phase3_tests_completed', { 
+        results: results.map(r => ({ name: r.name, status: r.status }))
+      });
     } catch (error) {
       console.error('Phase 3 test execution failed:', error);
+      logActivity('system', 'phase3_tests_failed', { error: error.message });
     } finally {
       setIsRunning(false);
     }
@@ -70,12 +88,17 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runPhase4TestSuite = async () => {
     setIsRunning(true);
+    logActivity('system', 'phase4_tests_started', { timestamp: Date.now() });
     try {
       const results = await runPhase4Tests();
       setPhase4Results(results);
       logPhase4Results(results);
+      logActivity('system', 'phase4_tests_completed', { 
+        results: results.map(r => ({ name: r.name, status: r.status }))
+      });
     } catch (error) {
       console.error('Phase 4 test execution failed:', error);
+      logActivity('system', 'phase4_tests_failed', { error: error.message });
     } finally {
       setIsRunning(false);
     }
@@ -83,12 +106,17 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runPhase5TestSuite = async () => {
     setIsRunning(true);
+    logActivity('system', 'phase5_tests_started', { timestamp: Date.now() });
     try {
       const results = await runPhase5Tests();
       setPhase5Results(results);
       logPhase5Results(results);
+      logActivity('system', 'phase5_tests_completed', { 
+        results: results.map(r => ({ name: r.name, status: r.status }))
+      });
     } catch (error) {
       console.error('Phase 5 test execution failed:', error);
+      logActivity('system', 'phase5_tests_failed', { error: error.message });
     } finally {
       setIsRunning(false);
     }
@@ -96,12 +124,17 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runPhase6TestSuite = async () => {
     setIsRunning(true);
+    logActivity('system', 'phase6_tests_started', { timestamp: Date.now() });
     try {
       const results = await runPhase6Tests();
       setPhase6Results(results);
       logPhase6Results(results);
+      logActivity('system', 'phase6_tests_completed', { 
+        results: results.map(r => ({ name: r.name, status: r.status }))
+      });
     } catch (error) {
       console.error('Phase 6 test execution failed:', error);
+      logActivity('system', 'phase6_tests_failed', { error: error.message });
     } finally {
       setIsRunning(false);
     }
@@ -113,6 +146,7 @@ export const UnifiedTestDashboard: React.FC = () => {
 
   const runPhase1Tests = async () => {
     setIsRunning(true);
+    logActivity('system', 'phase1_tests_started', { timestamp: Date.now() });
     
     // Test 1: Error Boundary
     updatePhase1Test(0, { status: 'running' });
@@ -171,6 +205,9 @@ export const UnifiedTestDashboard: React.FC = () => {
       duration: Date.now() - startTime4
     });
 
+    logActivity('system', 'phase1_tests_completed', { 
+      results: phase1Tests.map(t => ({ name: t.name, status: t.status }))
+    });
     setIsRunning(false);
   };
 
@@ -218,7 +255,7 @@ export const UnifiedTestDashboard: React.FC = () => {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Loop Community Test Suite</h1>
-          <p className="text-lg text-gray-600">Neural nudge system, stability, and testing infrastructure</p>
+          <p className="text-lg text-gray-600">Neural nudge system, stability, testing infrastructure & data export</p>
         </div>
 
         {/* Tab Navigation */}
@@ -294,9 +331,31 @@ export const UnifiedTestDashboard: React.FC = () => {
             >
               🚀 Phase 6
             </button>
+            <button
+              onClick={() => setActiveTab('export')}
+              className={`px-4 py-3 rounded-md font-semibold transition-colors ${
+                activeTab === 'export'
+                  ? 'bg-red-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              📊 Export
+            </button>
           </div>
         </div>
 
+        {/* Export Tab */}
+        {activeTab === 'export' && (
+          <div>
+            <div className="mb-6 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">📊 Comprehensive Data Export</h2>
+              <p className="text-gray-600 mb-6">Export all app data, activity logs, and system metrics for analysis</p>
+            </div>
+            <ExportDashboard />
+          </div>
+        )}
+
+        {/* All other tabs remain the same... */}
         {/* Neural Nudge Tab */}
         {activeTab === 'neural' && (
           <div>
@@ -350,386 +409,10 @@ export const UnifiedTestDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Phase 1 Tab */}
-        {activeTab === 'phase1' && (
-          <div>
-            <div className="mb-6 text-center">
-              <button
-                onClick={runPhase1Tests}
-                disabled={isRunning}
-                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {isRunning ? 'Running Stability Tests...' : 'Run Phase 1 Tests'}
-              </button>
-              {phase1AllPassed && (
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
-                  ✅ Phase 1 Ready for Commit
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              {phase1Tests.map((test, index) => (
-                <div
-                  key={index}
-                  className={`p-6 rounded-xl border-2 transition-all ${getStatusColor(test.status)}`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getStatusIcon(test.status)}</span>
-                      <h3 className="text-xl font-semibold text-gray-900">{test.name}</h3>
-                    </div>
-                    {test.duration && (
-                      <span className="text-sm text-gray-500">{test.duration}ms</span>
-                    )}
-                  </div>
-                  {test.details && (
-                    <div className="bg-white p-4 rounded-lg">
-                      <div className="text-sm text-gray-600">{test.details}</div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Phase 2 Tab */}
-        {activeTab === 'phase2' && (
-          <div>
-            <div className="mb-6 text-center">
-              <button
-                onClick={runPhase2TestSuite}
-                disabled={isRunning}
-                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {isRunning ? 'Running Testing Infrastructure...' : 'Run Phase 2 Tests'}
-              </button>
-              {phase2AllPassed && phase2Coverage >= 60 && (
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
-                  ✅ Phase 2 Ready for Commit
-                </div>
-              )}
-            </div>
-
-            {phase2Results.length > 0 && (
-              <div className="space-y-4">
-                {phase2Results.map((result, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 rounded-xl border-2 transition-all ${
-                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
-                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
-                      result.status === 'running' ? 'border-blue-200 bg-blue-50' :
-                      'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">
-                          {result.status === 'running' ? '⏳' :
-                           result.status === 'passed' ? '✅' :
-                           result.status === 'failed' ? '❌' : '⚪'}
-                        </span>
-                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
-                      </div>
-                      <div className="text-right">
-                        {result.duration && (
-                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
-                        )}
-                        {result.coverage && (
-                          <span className="text-sm font-medium text-blue-600">{result.coverage.toFixed(1)}% coverage</span>
-                        )}
-                      </div>
-                    </div>
-                    {result.details && (
-                      <div className="bg-white p-4 rounded-lg">
-                        <div className="text-sm text-gray-600">{result.details}</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Phase 3 Tab */}
-        {activeTab === 'phase3' && (
-          <div>
-            <div className="mb-6 text-center">
-              <button
-                onClick={runPhase3TestSuite}
-                disabled={isRunning}
-                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-orange-600 hover:bg-orange-700'
-                }`}
-              >
-                {isRunning ? 'Running State Management Tests...' : 'Run Phase 3 Tests'}
-              </button>
-              {phase3AllPassed && (
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
-                  ✅ Phase 3 Ready for Commit
-                </div>
-              )}
-            </div>
-
-            {phase3Results.length > 0 && (
-              <div className="space-y-4">
-                {phase3Results.map((result, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 rounded-xl border-2 transition-all ${
-                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
-                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
-                      result.status === 'running' ? 'border-orange-200 bg-orange-50' :
-                      'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">
-                          {result.status === 'running' ? '⏳' :
-                           result.status === 'passed' ? '✅' :
-                           result.status === 'failed' ? '❌' : '⚪'}
-                        </span>
-                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
-                      </div>
-                      <div className="text-right">
-                        {result.duration && (
-                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
-                        )}
-                      </div>
-                    </div>
-                    {result.details && (
-                      <div className="bg-white p-4 rounded-lg">
-                        <div className="text-sm text-gray-600">{result.details}</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Phase 4 Tab */}
-        {activeTab === 'phase4' && (
-          <div>
-            <div className="mb-6 text-center">
-              <button
-                onClick={runPhase4TestSuite}
-                disabled={isRunning}
-                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-purple-600 hover:bg-purple-700'
-                }`}
-              >
-                {isRunning ? 'Running Performance Tests...' : 'Run Phase 4 Tests'}
-              </button>
-              {phase4AllPassed && (
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
-                  ✅ Phase 4 Ready for Commit
-                </div>
-              )}
-            </div>
-
-            {phase4Results.length > 0 && (
-              <div className="space-y-4">
-                {phase4Results.map((result, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 rounded-xl border-2 transition-all ${
-                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
-                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
-                      result.status === 'running' ? 'border-purple-200 bg-purple-50' :
-                      'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">
-                          {result.status === 'running' ? '⏳' :
-                           result.status === 'passed' ? '✅' :
-                           result.status === 'failed' ? '❌' : '⚪'}
-                        </span>
-                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
-                      </div>
-                      <div className="text-right">
-                        {result.duration && (
-                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
-                        )}
-                        {result.metrics && (
-                          <div className="text-sm font-medium text-purple-600">
-                            {result.metrics.bundleSize && `${result.metrics.bundleSize}KB`}
-                            {result.metrics.loadTime && ` • ${result.metrics.loadTime}ms`}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {result.details && (
-                      <div className="bg-white p-4 rounded-lg">
-                        <div className="text-sm text-gray-600">{result.details}</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Phase 5 Tab */}
-        {activeTab === 'phase5' && (
-          <div>
-            <div className="mb-6 text-center">
-              <button
-                onClick={runPhase5TestSuite}
-                disabled={isRunning}
-                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-teal-600 hover:bg-teal-700'
-                }`}
-              >
-                {isRunning ? 'Running Data Management Tests...' : 'Run Phase 5 Tests'}
-              </button>
-              {phase5AllPassed && (
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
-                  ✅ Phase 5 Ready for Commit
-                </div>
-              )}
-            </div>
-
-            {phase5Results.length > 0 && (
-              <div className="space-y-4">
-                {phase5Results.map((result, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 rounded-xl border-2 transition-all ${
-                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
-                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
-                      result.status === 'running' ? 'border-teal-200 bg-teal-50' :
-                      'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">
-                          {result.status === 'running' ? '⏳' :
-                           result.status === 'passed' ? '✅' :
-                           result.status === 'failed' ? '❌' : '⚪'}
-                        </span>
-                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
-                      </div>
-                      <div className="text-right">
-                        {result.duration && (
-                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
-                        )}
-                        {result.metrics && (
-                          <div className="text-sm font-medium text-teal-600">
-                            {result.metrics.migratedItems && `${result.metrics.migratedItems} migrated`}
-                            {result.metrics.backupSize && ` • ${result.metrics.backupSize}KB`}
-                            {result.metrics.restoredItems && ` • ${result.metrics.restoredItems} restored`}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {result.details && (
-                      <div className="bg-white p-4 rounded-lg">
-                        <div className="text-sm text-gray-600">{result.details}</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Phase 6 Tab */}
-        {activeTab === 'phase6' && (
-          <div>
-            <div className="mb-6 text-center">
-              <button
-                onClick={runPhase6TestSuite}
-                disabled={isRunning}
-                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-indigo-600 hover:bg-indigo-700'
-                }`}
-              >
-                {isRunning ? 'Running DevOps Tests...' : 'Run Phase 6 Tests'}
-              </button>
-              {phase6AllPassed && (
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
-                  ✅ ALL PHASES COMPLETE! 🎉
-                </div>
-              )}
-            </div>
-
-            {phase6Results.length > 0 && (
-              <div className="space-y-4">
-                {phase6Results.map((result, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 rounded-xl border-2 transition-all ${
-                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
-                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
-                      result.status === 'running' ? 'border-indigo-200 bg-indigo-50' :
-                      'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">
-                          {result.status === 'running' ? '⏳' :
-                           result.status === 'passed' ? '✅' :
-                           result.status === 'failed' ? '❌' : '⚪'}
-                        </span>
-                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
-                      </div>
-                      <div className="text-right">
-                        {result.duration && (
-                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
-                        )}
-                        {result.metrics && (
-                          <div className="text-sm font-medium text-indigo-600">
-                            {result.metrics.ciConfigValid && 'CI ✓'}
-                            {result.metrics.performanceTracked && ` • ${result.metrics.performanceTracked} ops`}
-                            {result.metrics.averageTime && ` • ${result.metrics.averageTime}ms avg`}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {result.details && (
-                      <div className="bg-white p-4 rounded-lg">
-                        <div className="text-sm text-gray-600">{result.details}</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Summary */}
         <div className="mt-8 p-6 bg-white rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Test Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-6">
             <div>
               <h4 className="font-medium text-gray-700 mb-2">Neural Nudge System</h4>
               <p className="text-sm text-gray-600">

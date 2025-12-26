@@ -9,6 +9,8 @@ interface TodoStore {
   updateTodo: (id: string, updates: Partial<Todo>) => void;
   addTemplate: (template: Template) => void;
   deleteTemplate: (id: string) => void;
+  updateTemplate: (id: string, updates: Partial<Template>) => void;
+  setTemplates: (templates: Template[]) => void;
   loadTodos: (todos: Todo[]) => void;
   loadTemplates: (templates: Template[]) => void;
 }
@@ -36,6 +38,12 @@ export const useTodoStore = create<TodoStore>((set) => ({
   deleteTemplate: (id) => set((state) => ({ 
     templates: state.templates.filter(t => t.id !== id) 
   })),
+  
+  updateTemplate: (id, updates) => set((state) => ({
+    templates: state.templates.map(t => t.id === id ? { ...t, ...updates } : t)
+  })),
+  
+  setTemplates: (templates) => set({ templates }),
   
   loadTodos: (todos) => set({ todos }),
   

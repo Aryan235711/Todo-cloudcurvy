@@ -1,1 +1,55 @@
-import { errorHandler } from '../../services/errorHandlerService';\n\ndescribe('ErrorHandlerService', () => {\n  beforeEach(() => {\n    errorHandler.resetErrorCount();\n  });\n\n  test('handleError does not crash', () => {\n    const testError = new Error('Test error');\n    expect(() => errorHandler.handleError(testError, 'test-context')).not.toThrow();\n  });\n\n  test('handleAsyncError returns null on error', async () => {\n    const failingPromise = Promise.reject(new Error('Async error'));\n    const result = await errorHandler.handleAsyncError(failingPromise, 'test-async');\n    expect(result).toBeNull();\n  });\n\n  test('tracks error count correctly', () => {\n    const testError = new Error('Test error');\n    errorHandler.handleError(testError, 'test-1');\n    errorHandler.handleError(testError, 'test-2');\n    expect(errorHandler.getErrorCount()).toBe(2);\n  });\n\n  test('resetErrorCount works', () => {\n    const testError = new Error('Test error');\n    errorHandler.handleError(testError, 'test');\n    errorHandler.resetErrorCount();\n    expect(errorHandler.getErrorCount()).toBe(0);\n  });\n});
+import { errorHandler } from '../../services/errorHandlerService';
+
+export const testErrorHandler = () => {
+  let passed = 0;
+  let total = 0;
+
+  const runTest = (name: string, testFn: () => void | Promise<void>) => {
+    total++;
+    try {
+      const result = testFn();
+      if (result instanceof Promise) {
+        return result.then(() => {
+          passed++;
+          console.log(`✓ ${name}`);
+        }).catch(err => {
+          console.log(`✗ ${name}: ${err.message}`);
+        });
+      } else {
+        passed++;
+        console.log(`✓ ${name}`);
+      }
+    } catch (err: any) {
+      console.log(`✗ ${name}: ${err.message}`);
+    }
+  };
+
+  errorHandler.resetErrorCount();
+
+  runTest('handleError does not crash', () => {
+    const testError = new Error('Test error');
+    errorHandler.handleError(testError, 'test-context');
+  });
+
+  runTest('handleAsyncError returns null on error', async () => {
+    const failingPromise = Promise.reject(new Error('Async error'));
+    const result = await errorHandler.handleAsyncError(failingPromise, 'test-async');
+    if (result !== null) throw new Error('Expected null');
+  });
+
+  runTest('tracks error count correctly', () => {
+    const testError = new Error('Test error');
+    errorHandler.handleError(testError, 'test-1');
+    errorHandler.handleError(testError, 'test-2');
+    if (errorHandler.getErrorCount() !== 2) throw new Error('Expected count 2');
+  });
+
+  runTest('resetErrorCount works', () => {
+    const testError = new Error('Test error');
+    errorHandler.handleError(testError, 'test');
+    errorHandler.resetErrorCount();
+    if (errorHandler.getErrorCount() !== 0) throw new Error('Expected count 0');
+  });
+
+  return { passed, total, success: passed === total };
+};

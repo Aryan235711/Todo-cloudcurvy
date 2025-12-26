@@ -26,7 +26,7 @@ export async function runPhase2Tests(): Promise<Phase2TestResult[]> {
   const startTime1 = Date.now();
   try {
     const testResults = testNotificationService();
-    const passed = testResults.every(t => t.passed);
+    const passed = testResults.success;
     results[0] = {
       ...results[0],
       status: passed ? 'passed' : 'failed',
@@ -72,7 +72,7 @@ export async function runPhase2Tests(): Promise<Phase2TestResult[]> {
   const startTime3 = Date.now();
   try {
     const testResults = testErrorHandler();
-    const passed = testResults.every(t => t.passed);
+    const passed = testResults.success;
     results[2] = {
       ...results[2],
       status: passed ? 'passed' : 'failed',

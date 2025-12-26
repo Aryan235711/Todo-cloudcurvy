@@ -62,6 +62,8 @@ const App: React.FC = () => {
     updateTodo,
     addTemplate,
     deleteTemplate,
+    updateTemplate,
+    setTemplates,
     inputValue, setInputValue,
     activePriority, setActivePriority,
     sortMode, setSortMode,
@@ -550,8 +552,8 @@ const App: React.FC = () => {
 
         <main className="flex-1 flex flex-col gap-6 lg:gap-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-12">
-            {(Object.entries(groupedTodos) as [string, Todo[]][]).map(([name, items]) => {
-              if (items.length === 0) return null;
+            {groupedTodos && (Object.entries(groupedTodos) as [string, Todo[]][]).map(([name, items]) => {
+              if (!items || !Array.isArray(items) || items.length === 0) return null;
               const nodes = buildCategorizedNodes(items);
 
               const activeNodes: (Todo | BundleNode)[] = [];
@@ -735,10 +737,10 @@ const App: React.FC = () => {
           isOpen={isTemplatesOpen}
           onClose={() => setIsTemplatesOpen(false)}
           templates={templates}
-          onTemplateUpdate={addTemplate}
+          setTemplates={setTemplates}
           onDeploy={(tmpl) => {
             setReviewingTemplate(tmpl);
-            setSelectedReviewIndices(new Set(tmpl.items.map((_, i) => i)));
+            setSelectedReviewIndices(new Set((tmpl.items || []).map((_, i) => i)));
             setIsTemplatesOpen(false);
             triggerHaptic('medium');
           }}
@@ -757,7 +759,7 @@ const App: React.FC = () => {
           }}
           onToggleAll={() => {
             if (selectedReviewIndices.size === reviewingTemplate?.items.length) setSelectedReviewIndices(new Set());
-            else setSelectedReviewIndices(new Set(reviewingTemplate?.items.map((_, i) => i)));
+            else setSelectedReviewIndices(new Set((reviewingTemplate?.items || []).map((_, i) => i)));
           }}
           onManifest={() => {
             if (!reviewingTemplate) return;
