@@ -1,5 +1,3 @@
-import '@testing-library/jest-dom';
-
 // Mock Capacitor for testing
 global.Capacitor = {
   isNativePlatform: () => false,
@@ -10,18 +8,18 @@ global.Capacitor = {
 Object.defineProperty(window, 'speechSynthesis', {
   writable: true,
   value: {
-    speak: vi.fn(),
-    cancel: vi.fn(),
-    getVoices: vi.fn(() => [])
+    speak: () => {},
+    cancel: () => {},
+    getVoices: () => []
   }
 });
 
 // Mock localStorage
 const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+  clear: () => {},
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock

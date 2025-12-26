@@ -1,4 +1,8 @@
-// Phase 2 Test Runner Service
+// Phase 2 Test Runner Service - Simplified
+import { testNotificationService } from '../tests/services/notificationService.test';
+import { testGeminiService } from '../tests/services/geminiService.test';
+import { testErrorHandler } from '../tests/services/errorHandlerService.test';
+
 export interface Phase2TestResult {
   name: string;
   status: 'pending' | 'running' | 'passed' | 'failed';
@@ -21,18 +25,8 @@ export async function runPhase2Tests(): Promise<Phase2TestResult[]> {
   results[0].status = 'running';
   const startTime1 = Date.now();
   try {
-    // Simulate running notification service tests
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock test results
-    const notificationTests = {
-      triggerHaptic: true,
-      recordTaskCompletion: true,
-      getBehavioralInsights: true,
-      errorHandling: true
-    };
-    
-    const passed = Object.values(notificationTests).every(Boolean);
+    const testResults = testNotificationService();
+    const passed = testResults.every(t => t.passed);
     results[0] = {
       ...results[0],
       status: passed ? 'passed' : 'failed',
@@ -50,18 +44,12 @@ export async function runPhase2Tests(): Promise<Phase2TestResult[]> {
   }
 
   // Test 2: GeminiService
+  await new Promise(resolve => setTimeout(resolve, 500));
   results[1].status = 'running';
   const startTime2 = Date.now();
   try {
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    const geminiTests = {
-      validateApiKey: true,
-      getTaskBreakdown: true,
-      errorHandling: true
-    };
-    
-    const passed = Object.values(geminiTests).every(Boolean);
+    const testResults = await testGeminiService();
+    const passed = testResults.every(t => t.passed);
     results[1] = {
       ...results[1],
       status: passed ? 'passed' : 'failed',
@@ -79,19 +67,12 @@ export async function runPhase2Tests(): Promise<Phase2TestResult[]> {
   }
 
   // Test 3: ErrorHandler
+  await new Promise(resolve => setTimeout(resolve, 500));
   results[2].status = 'running';
   const startTime3 = Date.now();
   try {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const errorTests = {
-      handleError: true,
-      handleAsyncError: true,
-      errorCounting: true,
-      gracefulHandling: true
-    };
-    
-    const passed = Object.values(errorTests).every(Boolean);
+    const testResults = testErrorHandler();
+    const passed = testResults.every(t => t.passed);
     results[2] = {
       ...results[2],
       status: passed ? 'passed' : 'failed',
@@ -109,11 +90,10 @@ export async function runPhase2Tests(): Promise<Phase2TestResult[]> {
   }
 
   // Test 4: Coverage Analysis
+  await new Promise(resolve => setTimeout(resolve, 300));
   results[3].status = 'running';
   const startTime4 = Date.now();
   try {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
     const overallCoverage = results
       .filter(r => r.coverage)
       .reduce((sum, r) => sum + (r.coverage || 0), 0) / 3;

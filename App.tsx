@@ -53,8 +53,13 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const {
-    todos, setTodos,
-    templates, setTemplates,
+    todos,
+    templates,
+    addTodo,
+    deleteTodo, 
+    updateTodo,
+    addTemplate,
+    deleteTemplate,
     inputValue, setInputValue,
     activePriority, setActivePriority,
     sortMode, setSortMode,
@@ -187,8 +192,12 @@ const App: React.FC = () => {
   const handleToggleBundleCompletion = useCallback((bundleName: string, shouldComplete: boolean) => {
     const tmpl = templates.find(t => t.name === bundleName);
     if (shouldComplete) triggerHaptic(tmpl?.priority === 'high' ? 'success' : 'medium');
-    setTodos(prev => prev.map(todo => todo.templateName === bundleName ? { ...todo, completed: shouldComplete } : todo));
-  }, [templates, setTodos]);
+    todos.forEach(todo => {
+      if (todo.templateName === bundleName) {
+        updateTodo(todo.id, { completed: shouldComplete });
+      }
+    });
+  }, [templates, todos, updateTodo]);
 
   const toggleBundle = useCallback((bundleName: string) => {
     setExpandedBundles(prev => {
@@ -200,36 +209,29 @@ const App: React.FC = () => {
   }, []);
 
   const handleTodoToggle = useCallback((id: string) => {
-    setTodos(prev => {
-      const item = prev.find(i => i.id === id);
-      if (item && !item.completed) {
-        triggerHaptic(item.priority === 'high' ? 'success' : 'medium');
-        // Track completion for analytics
-        analyticsService.trackTaskCompleted(id);
-        return prev.map(todo => 
-          todo.id === id ? { ...todo, completed: true, completedAt: Date.now() } : todo
-        );
-      }
+    const item = todos.find(i => i.id === id);
+    if (item && !item.completed) {
+      triggerHaptic(item.priority === 'high' ? 'success' : 'medium');
+      // Track completion for analytics
+      analyticsService.trackTaskCompleted(id);
+      updateTodo(id, { completed: true, completedAt: Date.now() });
+    } else {
       // Handle restore from completed (clear completedAt)
-      return prev.map(todo => 
-        todo.id === id 
-          ? { ...todo, completed: !todo.completed, completedAt: todo.completed ? undefined : Date.now() }
-          : todo
-      );
-    });
-  }, [setTodos]);
+      updateTodo(id, { 
+        completed: !item?.completed, 
+        completedAt: item?.completed ? undefined : Date.now() 
+      });
+    }
+  }, [todos, updateTodo]);
 
   const handleTodoDelete = useCallback((id: string) => {
     const todo = todos.find(t => t.id === id);
     if (todo) {
       analyticsService.trackTaskAbandoned(id);
-      setTodos(prev => {
-        // Actually remove the task instead of soft delete for immediate UI update
-        return prev.filter(t => t.id !== id);
-      });
+      deleteTodo(id);
     }
     triggerHaptic('heavy');
-  }, [todos, setTodos]);
+  }, [todos, deleteTodo]);
 
   const handleTodoEdit = useCallback((id: string, newText: string) => {
     if (!newText.trim()) return;
@@ -247,16 +249,13 @@ const App: React.FC = () => {
         type: 'text' as const
       };
       
-      setTodos(prev => prev.map(t => 
-        t.id === id ? { 
-          ...t, 
-          text: capitalize(newText.trim()),
-          editHistory: [...(t.editHistory || []), editEntry]
-        } : t
-      ));
+      updateTodo(id, { 
+        text: capitalize(newText.trim()),
+        editHistory: [...(todo.editHistory || []), editEntry]
+      });
     }
     triggerHaptic('light');
-  }, [todos, setTodos, capitalize]);
+  }, [todos, updateTodo, capitalize]);
 
   const handleTodoPriorityChange = useCallback((id: string, priority: 'low' | 'medium' | 'high') => {
     const todo = todos.find(t => t.id === id);
@@ -264,12 +263,10 @@ const App: React.FC = () => {
       // Track priority change for analytics
       analyticsService.trackPriorityChanged(id, todo.priority, priority);
       
-      setTodos(prev => prev.map(t => 
-        t.id === id ? { ...t, priority } : t
-      ));
+      updateTodo(id, { priority });
     }
     triggerHaptic('light');
-  }, [todos, setTodos]);
+  }, [todos, updateTodo]);
 
   // Clean up selection state when todos change
   useEffect(() => {
@@ -303,7 +300,7 @@ const App: React.FC = () => {
 
   const handleBulkDelete = useCallback(() => {
     // Actually remove tasks instead of soft delete
-    setTodos(prev => prev.filter(todo => !selectedTodos.has(todo.id)));
+    selectedTodos.forEach(id => deleteTodo(id));
     
     // Track abandoned tasks for analytics
     selectedTodos.forEach(id => {
@@ -313,33 +310,29 @@ const App: React.FC = () => {
     setSelectedTodos(new Set());
     setIsSelectionMode(false);
     triggerHaptic('heavy');
-  }, [selectedTodos, setTodos]);
+  }, [selectedTodos, deleteTodo]);
 
   const handleBulkPriority = useCallback((priority: 'low' | 'medium' | 'high') => {
-    setTodos(prev => prev.map(todo => 
-      selectedTodos.has(todo.id) ? { ...todo, priority } : todo
-    ));
+    selectedTodos.forEach(id => updateTodo(id, { priority }));
     setSelectedTodos(new Set());
     setIsSelectionMode(false);
     triggerHaptic('medium');
-  }, [selectedTodos, setTodos]);
+  }, [selectedTodos, updateTodo]);
 
   const handleBundleDelete = useCallback((bundleName: string) => {
     // Actually remove bundle tasks instead of soft delete
-    setTodos(prev => prev.filter(todo => todo.templateName !== bundleName));
-    
-    // Track abandoned tasks for analytics
     const bundleTasks = todos.filter(t => t.templateName === bundleName);
     bundleTasks.forEach(task => {
+      deleteTodo(task.id);
       analyticsService.trackTaskAbandoned(task.id);
     });
     
     triggerHaptic('heavy');
-  }, [setTodos, todos]);
+  }, [deleteTodo, todos]);
 
   const handleUpdateSubtasks = useCallback((id: string, steps: string[]) => {
-    setTodos(prev => prev.map(todo => todo.id === id ? { ...todo, subTasks: steps } : todo));
-  }, [setTodos]);
+    updateTodo(id, { subTasks: steps });
+  }, [updateTodo]);
 
   type BundleNode = { type: 'bundle'; name: string; items: Todo[] };
   const isBundleNode = (node: Todo | BundleNode): node is BundleNode => 'type' in node;
@@ -458,7 +451,7 @@ const App: React.FC = () => {
             🧪 Test Suite Dashboard
           </button>
           <p className="text-xs text-indigo-600 mt-2 text-center">
-            Neural nudge tests • Phase 1 stability • Comprehensive verification
+            Neural nudge • Phase 1 stability • Phase 2 testing infrastructure
           </p>
         </div>
 
@@ -720,8 +713,8 @@ const App: React.FC = () => {
         <CustomConfirmModal
           message="Permanently erase everything? This includes all your tasks and custom templates."
           onConfirm={() => {
-            setTodos([]);
-            setTemplates([]);
+            todos.forEach(todo => deleteTodo(todo.id));
+            templates.forEach(template => deleteTemplate(template.id));
             localStorage.removeItem('curvycloud_todos');
             localStorage.removeItem('curvycloud_templates');
             localStorage.removeItem('curvycloud_onboarding_seen');
@@ -733,21 +726,6 @@ const App: React.FC = () => {
       )}
 
         {/* Delete Confirmation Modal */}
-        {showCustomPurgeModal && (
-          <CustomConfirmModal
-            message="Permanently erase everything? This includes all your tasks and custom templates."
-            onConfirm={() => {
-              setTodos([]);
-              setTemplates([]);
-              localStorage.removeItem('curvycloud_todos');
-              localStorage.removeItem('curvycloud_templates');
-              localStorage.removeItem('curvycloud_onboarding_seen');
-              window.location.reload();
-              setShowCustomPurgeModal(false);
-            }}
-            onCancel={() => setShowCustomPurgeModal(false)}
-          />
-        )}
 
         <ApiKeyModal isOpen={isKeyModalOpen} onClose={() => setIsKeyModalOpen(false)} hasApiKey={hasApiKey} onConnect={handleConnectKey} />
 
@@ -755,7 +733,7 @@ const App: React.FC = () => {
           isOpen={isTemplatesOpen}
           onClose={() => setIsTemplatesOpen(false)}
           templates={templates}
-          setTemplates={setTemplates}
+          onTemplateUpdate={addTemplate}
           onDeploy={(tmpl) => {
             setReviewingTemplate(tmpl);
             setSelectedReviewIndices(new Set(tmpl.items.map((_, i) => i)));
@@ -793,7 +771,7 @@ const App: React.FC = () => {
               tags: reviewingTemplate.tags,
               templateName: reviewingTemplate.name
             }));
-            setTodos(prev => [...newTodos, ...prev]);
+            newTodos.forEach(todo => addTodo(todo));
             setReviewingTemplate(null);
           }}
           onAddItem={(item) => {
@@ -801,8 +779,9 @@ const App: React.FC = () => {
             const newItem = capitalize(item.trim());
             const newItems = [...reviewingTemplate.items, newItem];
             const newIndex = newItems.length - 1;
-            setTemplates(prev => prev.map(tmpl => tmpl.id === reviewingTemplate.id ? { ...tmpl, items: newItems } : tmpl));
-            setReviewingTemplate({ ...reviewingTemplate, items: newItems });
+            const updatedTemplate = { ...reviewingTemplate, items: newItems };
+            addTemplate(updatedTemplate);
+            setReviewingTemplate(updatedTemplate);
             setSelectedReviewIndices(prev => new Set(prev).add(newIndex));
             triggerHaptic('light');
           }}

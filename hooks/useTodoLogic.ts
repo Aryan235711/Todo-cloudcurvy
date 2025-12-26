@@ -8,11 +8,24 @@ import { parseVoiceCommand } from '../services/voiceCommandService';
 import { taskCategorizationService } from '../services/taskCategorizationService';
 import { offlineStorageService } from '../services/offlineStorageService';
 import { useNetworkStatus } from './useNetworkStatus';
+import { useTodoStore } from '../stores/todoStore';
 
 export const useTodoLogic = () => {
   const { isOnline } = useNetworkStatus();
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
+  
+  // Use Zustand store instead of local state
+  const { 
+    todos, 
+    templates, 
+    addTodo, 
+    deleteTodo, 
+    updateTodo, 
+    addTemplate, 
+    deleteTemplate, 
+    loadTodos, 
+    loadTemplates 
+  } = useTodoStore();
+  
   const [inputValue, setInputValue] = useState('');
   const [activePriority, setActivePriority] = useState<Priority>('low');
   const [sortMode, setSortMode] = useState<'smart' | 'newest' | 'priority' | 'category'>('smart');
@@ -125,7 +138,7 @@ export const useTodoLogic = () => {
             setTimeout(() => setNotificationHint(null), 8000);
           }
           
-          setTodos(prev => prev.map(t => t.id === staleHigh.id ? { ...t, lastNotified: Date.now() } : t));
+          updateTodo(staleHigh.id, { lastNotified: Date.now() });
         } catch (error) {
           console.error('Neural nudge failed:', error);
           setNotificationHint('Failed to send smart nudge.');
@@ -140,10 +153,10 @@ export const useTodoLogic = () => {
   useEffect(() => {
     const savedTodos = offlineStorageService.getTodos();
     const savedTemplates = offlineStorageService.getTemplates();
-    setTodos(savedTodos);
-    setTemplates(savedTemplates);
+    loadTodos(savedTodos);
+    loadTemplates(savedTemplates);
     setIsInitialLoad(false);
-  }, []);
+  }, [loadTodos, loadTemplates]);
 
   useEffect(() => {
     if (isInitialLoad) return;
@@ -327,7 +340,7 @@ export const useTodoLogic = () => {
       isUrgent: false
     };
     
-    setTodos(prev => [initialTodo, ...prev]);
+    addTodo(initialTodo);
     setInputValue('');
   };
 
@@ -355,7 +368,7 @@ export const useTodoLogic = () => {
         tags: data.tags,
         priority: 'medium'
       };
-      setTemplates(prev => [newTemplate, ...prev]);
+      addTemplate(newTemplate);
       setInputValue('');
       setReviewingTemplate(newTemplate);
       setSelectedReviewIndices(new Set(newTemplate.items.map((_, i) => i)));
@@ -407,8 +420,13 @@ export const useTodoLogic = () => {
   }, [filteredTodos]);
 
   return {
-    todos, setTodos,
-    templates, setTemplates,
+    todos,
+    templates,
+    addTodo,
+    deleteTodo, 
+    updateTodo,
+    addTemplate,
+    deleteTemplate,
     inputValue, setInputValue,
     activePriority, setActivePriority,
     sortMode, setSortMode,
