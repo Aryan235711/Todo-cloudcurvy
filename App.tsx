@@ -11,12 +11,8 @@ import { Todo } from './types';
 import { TodoCard } from './components/TodoCard';
 import { Onboarding } from './components/Onboarding';
 import { useTodoLogic } from './hooks/useTodoLogic';
-import { ApiKeyModal } from './components/modals/ApiKeyModal';
-import { LibraryModal } from './components/modals/LibraryModal';
-import { ReviewModal } from './components/modals/ReviewModal';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 import { validateApiKey } from './services/geminiService';
-import { SettingsModal } from './components/modals/SettingsModal';
 import { HelpTooltip } from './components/ui/HelpTooltip';
 
 // Refactored Modular Components
@@ -25,9 +21,15 @@ import { Footer } from './components/layout/Footer';
 import { TodoInput } from './components/features/todo/TodoInput';
 import { TodoBundle } from './components/features/todo/TodoBundle';
 import { CustomConfirmModal } from './components/modals/CustomConfirmModal';
+import { CATEGORIES } from './constants';
+
+// Import modals directly (reverting lazy loading due to React error #306)
+import { ApiKeyModal } from './components/modals/ApiKeyModal';
+import { LibraryModal } from './components/modals/LibraryModal';
+import { ReviewModal } from './components/modals/ReviewModal';
+import { SettingsModal } from './components/modals/SettingsModal';
 import { NeuralNudgeDashboard } from './components/modals/NeuralNudgeDashboard';
 import { UnifiedTestDashboard } from './components/UnifiedTestDashboard';
-import { CATEGORIES } from './constants';
 
 // Import test runner for development
 if (process.env.NODE_ENV === 'development') {
@@ -788,7 +790,6 @@ const App: React.FC = () => {
           capitalize={capitalize}
         />
 
-        {/* Settings Modal */}
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
@@ -796,7 +797,6 @@ const App: React.FC = () => {
           onConnect={handleConnectKey}
         />
 
-        {/* Neural Nudge Dashboard */}
         {neuralNudgeData && (
           <NeuralNudgeDashboard
             isOpen={isNeuralNudgeOpen}
