@@ -16,36 +16,44 @@ interface CurvyWindow extends Window {
 }
 
 const getNativeSpeech = async () => {
-  if (!Capacitor.isNativePlatform()) return null;
+  console.log('🎤 Checking if running on native platform...');
+  if (!Capacitor.isNativePlatform()) {
+    console.log('🎤 Not on native platform, skipping native speech');
+    return null;
+  }
+  console.log('🎤 On native platform, loading speech recognition plugin...');
   try {
     const mod = await import('@capacitor-community/speech-recognition');
-    if (import.meta.env.DEV) console.log('Native speech plugin loaded successfully');
+    console.log('🎤 Native speech plugin loaded successfully');
     return mod.SpeechRecognition;
   } catch (e) {
-    if (import.meta.env.DEV) console.warn('Native speech plugin unavailable', e);
+    console.warn('🎤 Native speech plugin unavailable', e);
     return null;
   }
 };
 
 export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
-  if (import.meta.env.DEV) console.log('Checking voice mode...');
+  console.log('🎤 Checking voice mode...');
   
   const nativeSpeech = await getNativeSpeech();
   if (nativeSpeech) {
+    console.log('🎤 Native speech plugin found, checking availability...');
     try {
       const { available } = await nativeSpeech.available();
-      if (import.meta.env.DEV) console.log('Native speech available:', available);
+      console.log('🎤 Native speech available:', available);
       return available ? 'native' : 'web'; // Fallback to web if native unavailable
     } catch (e) {
-      if (import.meta.env.DEV) console.warn('Native speech availability check failed', e);
+      console.warn('🎤 Native speech availability check failed', e);
       // Don't return 'none' immediately, try web fallback
     }
+  } else {
+    console.log('🎤 No native speech plugin found, checking web speech...');
   }
 
   const win = window as CurvyWindow;
   const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
   const webAvailable = !!SpeechRecognition;
-  if (import.meta.env.DEV) console.log('Web speech available:', webAvailable);
+  console.log('🎤 Web speech available:', webAvailable);
   return webAvailable ? 'web' : 'none';
 };
 
@@ -56,14 +64,14 @@ export const startNativeVoice = async (opts: { language?: string; prompt?: strin
   let perm: { speechRecognition?: string };
   try {
     perm = await nativeSpeech.requestPermissions();
-    if (import.meta.env.DEV) console.log('Voice permissions:', perm);
+    console.log('🎤 Voice permissions:', perm);
   } catch (e) {
-    if (import.meta.env.DEV) console.warn('Voice permission request failed', e);
+    console.warn('🎤 Voice permission request failed', e);
     throw new Error('VOICE_PERMISSION_ERROR');
   }
 
   if (perm?.speechRecognition !== 'granted') {
-    if (import.meta.env.DEV) console.warn('Voice permission denied:', perm?.speechRecognition);
+    console.warn('🎤 Voice permission denied:', perm?.speechRecognition);
     throw new Error('VOICE_PERMISSION_DENIED');
   }
 

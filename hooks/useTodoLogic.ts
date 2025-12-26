@@ -201,6 +201,7 @@ export const useTodoLogic = () => {
     void (async () => {
       const mode = await getVoiceMode();
       if (cancelled) return;
+      console.log('🎤 Voice mode detected:', mode);
       setVoiceMode(mode);
 
       if (mode !== 'web') return;
