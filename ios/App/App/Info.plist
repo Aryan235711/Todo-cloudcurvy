@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>CurvyCloud</string>
+        <string>Loop</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -47,9 +47,9 @@
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>CurvyCloud uses the microphone for voice input when you tap the mic button.</string>
+	<string>Loop uses the microphone for voice input when you tap the mic button.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>CurvyCloud uses speech recognition to turn your voice into tasks.</string>
+	<string>Loop uses speech recognition to turn your voice into tasks.</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
