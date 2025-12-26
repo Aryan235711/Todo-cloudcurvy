@@ -29,22 +29,22 @@ export const Footer: React.FC<FooterProps> = ({ onPurge }) => {
         <ShieldCheck size={18} className="text-emerald-500" />
         <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2">On-Device Vault <Database size={10} /></span>
       </div>
-      <div className="flex flex-col items-center gap-2 mt-4">
+      <div className="flex flex-col items-center gap-3 mt-4">
         <button
           onClick={() => void openSubstack()}
-          className="text-[10px] font-black text-slate-400 hover:text-indigo-500 uppercase tracking-widest transition-colors curvy-btn px-4 py-2 flex items-center gap-2"
+          className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all curvy-btn flex items-center gap-2 shadow-lg"
           aria-label="Open Substack"
         >
-          <Newspaper size={12} /> Substack
+          <Newspaper size={14} /> Substack
         </button>
         <button
           onClick={onPurge}
-          className="text-[10px] font-black text-rose-300 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2 curvy-btn px-4 py-2"
+          className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all curvy-btn flex items-center gap-2 shadow-lg"
         >
-          <Trash size={12} /> Purge Vault
+          <Trash size={14} /> Purge Vault
         </button>
-        <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider text-center max-w-[200px]">
-          Wipes all local data. This action is final and removes all manifests from your browser cache.
+        <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider text-center max-w-[220px] leading-relaxed">
+          ⚠️ CRITICAL: Permanently destroys all tasks, templates, and settings. Cannot be undone.
         </p>
       </div>
     </footer>

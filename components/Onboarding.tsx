@@ -225,11 +225,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             <div className="mb-8">
               <button
                 onClick={() => void openSubstack()}
-                className="w-full bg-white/40 border border-white/60 text-slate-800 py-4 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.25em] transition-all active:scale-95 flex items-center justify-center gap-3 curvy-btn"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 px-6 rounded-[2rem] font-black text-sm transition-all active:scale-95 flex items-center justify-center gap-3 curvy-btn shadow-lg"
                 aria-label="Open Substack"
                 type="button"
               >
-                <Newspaper size={18} /> Open Substack
+                <Newspaper size={20} /> Open Substack
               </button>
             </div>
           )}
