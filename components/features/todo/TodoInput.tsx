@@ -76,7 +76,13 @@ export const TodoInput: React.FC<TodoInputProps> = ({
           <div className="flex gap-2 shrink-0">
             <button
               type="button"
-              onClick={onMagic}
+              onClick={async () => {
+                try {
+                  await onMagic();
+                } catch (error) {
+                  console.error('Magic template generation failed:', error);
+                }
+              }}
               disabled={!inputValue.trim() || isMagicLoading}
               className={`p-4 rounded-2xl transition-all shadow-md active:scale-95 curvy-btn ${
                 isMagicLoading ? 'bg-slate-200 text-slate-400' : 'bg-indigo-500 text-white'
