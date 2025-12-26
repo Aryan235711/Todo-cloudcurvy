@@ -8,7 +8,7 @@ interface FooterProps {
   onPurge: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onPurge }) => {
+export const Footer = React.memo<FooterProps>(({ onPurge }) => {
   const substackUrl = 'https://substack.com/@observededucerespond';
 
   const openSubstack = async () => {
@@ -49,4 +49,4 @@ export const Footer: React.FC<FooterProps> = ({ onPurge }) => {
       </div>
     </footer>
   );
-};
+});

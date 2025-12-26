@@ -19,7 +19,7 @@ interface HeaderProps {
   };
 }
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header = React.memo<HeaderProps>(({
   onShowOnboarding,
   onOpenSettings,
   onOpenLibrary,
@@ -222,4 +222,4 @@ export const Header: React.FC<HeaderProps> = ({
       <p className="text-slate-400 font-semibold text-lg sm:text-xl px-4 italic opacity-90 tracking-tight">"{motivation}"</p>
     </header>
   );
-};
+});
