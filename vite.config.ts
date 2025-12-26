@@ -34,7 +34,9 @@ export default defineConfig(({ mode }) => {
                 '@capacitor/push-notifications'
               ],
               ai: ['@google/genai'],
-              icons: ['lucide-react']
+              icons: ['lucide-react'],
+              // Separate notification services to resolve dynamic import warning
+              notifications: ['./services/notificationService']
             }
           }
         },
