@@ -67,9 +67,11 @@ class RateLimitService {
   canSendNotification(type: 'intervention' | 'contextual' | 'motivational'): boolean {
     const now = Date.now();
     
-    // Check cooldown period
+    // Check cooldown period with SAFE maximum
     const timeSinceLastNotification = now - this.lastNotificationTime;
-    const requiredCooldown = this.config.cooldownPeriod * Math.pow(this.config.backoffMultiplier, this.consecutiveFailures);
+    const baseCooldown = this.config.cooldownPeriod;
+    const backoffMultiplier = Math.min(this.consecutiveFailures, 3); // Cap at 3 failures
+    const requiredCooldown = Math.min(baseCooldown * Math.pow(2, backoffMultiplier), 30 * 60 * 1000); // Max 30 minutes
     
     if (timeSinceLastNotification < requiredCooldown) {
       console.log(`[Rate Limit] Cooldown active: ${Math.round((requiredCooldown - timeSinceLastNotification) / 1000)}s remaining`);
@@ -130,7 +132,9 @@ class RateLimitService {
   getNextAllowedTime(): number {
     const now = Date.now();
     const timeSinceLastNotification = now - this.lastNotificationTime;
-    const requiredCooldown = this.config.cooldownPeriod * Math.pow(this.config.backoffMultiplier, this.consecutiveFailures);
+    const baseCooldown = this.config.cooldownPeriod;
+    const backoffMultiplier = Math.min(this.consecutiveFailures, 3); // Cap at 3 failures
+    const requiredCooldown = Math.min(baseCooldown * Math.pow(2, backoffMultiplier), 30 * 60 * 1000); // Max 30 minutes
     
     if (timeSinceLastNotification >= requiredCooldown) {
       return now; // Can send now

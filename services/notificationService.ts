@@ -859,9 +859,10 @@ export const sendBehavioralIntervention = async (
     return false; // No intervention needed
   }
   
-  // Enterprise Rate Limiting Check
+  // FIXED: Enterprise Rate Limiting Check with proper error handling
   if (!rateLimitService.canSendNotification('intervention')) {
-    console.log('[Neural Nudge] Intervention blocked by rate limiting');
+    const status = rateLimitService.getRateLimitStatus();
+    console.log(`[Neural Nudge] Intervention blocked by rate limiting - ${Math.round(status.timeUntilNext / 1000)}s remaining`);
     rateLimitService.recordNotificationAttempt('intervention', false);
     return false;
   }
