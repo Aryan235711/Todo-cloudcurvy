@@ -4,6 +4,7 @@ import { runPhase2Tests, logPhase2Results, Phase2TestResult } from '../services/
 import { runPhase3Tests, logPhase3Results, Phase3TestResult } from '../services/phase3TestRunner';
 import { runPhase4Tests, logPhase4Results, Phase4TestResult } from '../services/phase4TestRunner';
 import { runPhase5Tests, logPhase5Results, Phase5TestResult } from '../services/phase5TestRunner';
+import { runPhase6Tests, logPhase6Results, Phase6TestResult } from '../services/phase6TestRunner';
 
 interface PhaseTestResult {
   name: string;
@@ -13,12 +14,13 @@ interface PhaseTestResult {
 }
 
 export const UnifiedTestDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'neural' | 'phase1' | 'phase2' | 'phase3' | 'phase4' | 'phase5'>('neural');
+  const [activeTab, setActiveTab] = useState<'neural' | 'phase1' | 'phase2' | 'phase3' | 'phase4' | 'phase5' | 'phase6'>('neural');
   const [neuralResults, setNeuralResults] = useState<TestResult[]>([]);
   const [phase2Results, setPhase2Results] = useState<Phase2TestResult[]>([]);
   const [phase3Results, setPhase3Results] = useState<Phase3TestResult[]>([]);
   const [phase4Results, setPhase4Results] = useState<Phase4TestResult[]>([]);
   const [phase5Results, setPhase5Results] = useState<Phase5TestResult[]>([]);
+  const [phase6Results, setPhase6Results] = useState<Phase6TestResult[]>([]);
   const [phase1Tests, setPhase1Tests] = useState<PhaseTestResult[]>([
     { name: 'Error Boundary Functionality', status: 'pending' },
     { name: 'Global Error Handler', status: 'pending' },
@@ -87,6 +89,19 @@ export const UnifiedTestDashboard: React.FC = () => {
       logPhase5Results(results);
     } catch (error) {
       console.error('Phase 5 test execution failed:', error);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const runPhase6TestSuite = async () => {
+    setIsRunning(true);
+    try {
+      const results = await runPhase6Tests();
+      setPhase6Results(results);
+      logPhase6Results(results);
+    } catch (error) {
+      console.error('Phase 6 test execution failed:', error);
     } finally {
       setIsRunning(false);
     }
@@ -183,6 +198,7 @@ export const UnifiedTestDashboard: React.FC = () => {
   const phase3AllPassed = phase3Results.length > 0 && phase3Results.every(r => r.status === 'passed');
   const phase4AllPassed = phase4Results.length > 0 && phase4Results.every(r => r.status === 'passed');
   const phase5AllPassed = phase5Results.length > 0 && phase5Results.every(r => r.status === 'passed');
+  const phase6AllPassed = phase6Results.length > 0 && phase6Results.every(r => r.status === 'passed');
   const phase2Coverage = phase2Results.length > 0 ? 
     phase2Results.filter(r => r.coverage).reduce((sum, r) => sum + (r.coverage || 0), 0) / phase2Results.filter(r => r.coverage).length : 0;
 
@@ -267,6 +283,16 @@ export const UnifiedTestDashboard: React.FC = () => {
               }`}
             >
               💾 Phase 5
+            </button>
+            <button
+              onClick={() => setActiveTab('phase6')}
+              className={`px-4 py-3 rounded-md font-semibold transition-colors ${
+                activeTab === 'phase6'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              🚀 Phase 6
             </button>
           </div>
         </div>
@@ -632,10 +658,78 @@ export const UnifiedTestDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* Phase 6 Tab */}
+        {activeTab === 'phase6' && (
+          <div>
+            <div className="mb-6 text-center">
+              <button
+                onClick={runPhase6TestSuite}
+                disabled={isRunning}
+                className={`px-8 py-4 rounded-lg text-white font-semibold text-lg transition-all ${
+                  isRunning 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                }`}
+              >
+                {isRunning ? 'Running DevOps Tests...' : 'Run Phase 6 Tests'}
+              </button>
+              {phase6AllPassed && (
+                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold">
+                  ✅ ALL PHASES COMPLETE! 🎉
+                </div>
+              )}
+            </div>
+
+            {phase6Results.length > 0 && (
+              <div className="space-y-4">
+                {phase6Results.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`p-6 rounded-xl border-2 transition-all ${
+                      result.status === 'passed' ? 'border-green-200 bg-green-50' :
+                      result.status === 'failed' ? 'border-red-200 bg-red-50' :
+                      result.status === 'running' ? 'border-indigo-200 bg-indigo-50' :
+                      'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">
+                          {result.status === 'running' ? '⏳' :
+                           result.status === 'passed' ? '✅' :
+                           result.status === 'failed' ? '❌' : '⚪'}
+                        </span>
+                        <h3 className="text-xl font-semibold text-gray-900">{result.name}</h3>
+                      </div>
+                      <div className="text-right">
+                        {result.duration && (
+                          <span className="text-sm text-gray-500 block">{result.duration}ms</span>
+                        )}
+                        {result.metrics && (
+                          <div className="text-sm font-medium text-indigo-600">
+                            {result.metrics.ciConfigValid && 'CI ✓'}
+                            {result.metrics.performanceTracked && ` • ${result.metrics.performanceTracked} ops`}
+                            {result.metrics.averageTime && ` • ${result.metrics.averageTime}ms avg`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {result.details && (
+                      <div className="bg-white p-4 rounded-lg">
+                        <div className="text-sm text-gray-600">{result.details}</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Summary */}
         <div className="mt-8 p-6 bg-white rounded-xl shadow-lg">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Test Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
             <div>
               <h4 className="font-medium text-gray-700 mb-2">Neural Nudge System</h4>
               <p className="text-sm text-gray-600">
@@ -681,6 +775,14 @@ export const UnifiedTestDashboard: React.FC = () => {
                 {phase5Results.length === 0 ? 'Not tested yet' :
                  phase5AllPassed ? '✅ Data migration & backup ready' :
                  '⚠️ Data management issues detected'}
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Phase 6 DevOps</h4>
+              <p className="text-sm text-gray-600">
+                {phase6Results.length === 0 ? 'Not tested yet' :
+                 phase6AllPassed ? '✅ CI/CD & monitoring ready' :
+                 '⚠️ DevOps setup issues detected'}
               </p>
             </div>
           </div>
