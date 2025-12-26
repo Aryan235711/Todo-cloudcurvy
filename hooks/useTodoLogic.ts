@@ -136,7 +136,7 @@ export const useTodoLogic = () => {
     return () => clearInterval(nudgeInterval);
   }, [todos]);
 
-  // Storage Persistence with Offline Support
+  // Storage Persistence with Offline Support and Cleanup
   useEffect(() => {
     const savedTodos = offlineStorageService.getTodos();
     const savedTemplates = offlineStorageService.getTemplates();
@@ -152,9 +152,13 @@ export const useTodoLogic = () => {
       window.clearTimeout(persistTimerRef.current);
     }
 
-    // Debounce persistence with offline support
+    // Debounce persistence with offline support and cleanup
     persistTimerRef.current = window.setTimeout(() => {
-      offlineStorageService.saveTodos(todos);
+      // Clean up old deleted tasks (older than 30 days) before saving
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      const cleanedTodos = todos.filter(t => !t.deletedAt || t.deletedAt > thirtyDaysAgo);
+      
+      offlineStorageService.saveTodos(cleanedTodos);
       offlineStorageService.saveTemplates(templates.slice(-500));
       persistTimerRef.current = null;
     }, 250);
@@ -367,10 +371,8 @@ export const useTodoLogic = () => {
   };
 
   const filteredTodos = useMemo(() => {
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    let list = todos.filter(t => {
-      return !t.deletedAt || t.deletedAt > thirtyDaysAgo;
-    });
+    // Filter out deleted tasks completely
+    let list = todos.filter(t => !t.deletedAt);
     
     if (filterCategory !== 'all') list = list.filter(t => t.category === filterCategory);
     const pMap = { high: 3, medium: 2, low: 1 };
