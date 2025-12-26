@@ -5,6 +5,7 @@ import { triggerHaptic, sendNudge } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
 import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
 import { parseVoiceCommand } from '../services/voiceCommandService';
+import { taskCategorizationService } from '../services/taskCategorizationService';
 import { offlineStorageService } from '../services/offlineStorageService';
 import { useNetworkStatus } from './useNetworkStatus';
 
@@ -311,12 +312,16 @@ export const useTodoLogic = () => {
 
     triggerHaptic(activePriority === 'high' ? 'heavy' : 'light');
     const newId = createId();
+    
+    // Smart categorization for human-generated tasks
+    const smartCategory = taskCategorizationService.categorizeTask(inputValue.trim());
+    
     const initialTodo: Todo = {
       id: newId,
       text: capitalize(inputValue.trim()),
       completed: false,
       createdAt: Date.now(),
-      category: 'other',
+      category: smartCategory,
       priority: activePriority,
       tags: [],
       isUrgent: false

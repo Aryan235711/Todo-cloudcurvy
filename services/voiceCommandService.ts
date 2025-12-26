@@ -1,8 +1,11 @@
 // Voice command parsing for enhanced voice UX
+import { taskCategorizationService } from './taskCategorizationService';
+
 export const parseVoiceCommand = (transcript: string): { 
   text: string; 
   priority?: 'high' | 'medium' | 'low';
   isUrgent?: boolean;
+  category?: 'work' | 'personal' | 'health' | 'other';
 } => {
   const lower = transcript.toLowerCase().trim();
   
@@ -25,9 +28,13 @@ export const parseVoiceCommand = (transcript: string): {
     .replace(/\s+/g, ' ')
     .trim();
   
+  // Smart categorization for voice tasks
+  const category = taskCategorizationService.categorizeTask(cleanText);
+  
   return {
     text: cleanText,
     priority,
-    isUrgent
+    isUrgent,
+    category
   };
 };
