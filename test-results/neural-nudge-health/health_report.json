@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-12-26T14:18:54.090Z",
+  "healthScore": {
+    "overall": 0.81,
+    "effectiveness": 0.67,
+    "reliability": 0.86,
+    "userSatisfaction": 0.8,
+    "systemHealth": 0.9
+  },
+  "performanceMetrics": {
+    "nudgeFrequency": 2,
+    "optimalTimingAccuracy": 0.72,
+    "contextualRelevance": 0.75,
+    "behavioralPredictionAccuracy": 0.72,
+    "abTestConvergence": 1
+  },
+  "systemHealth": {
+    "rateLimitStatus": "healthy",
+    "errorRate": 0.08333333333333333,
+    "responseTime": 49.4,
+    "memoryUsage": 0.35000000000000003,
+    "activeExperiments": 3
+  },
+  "recommendations": [
+    "✅ Neural nudge system operating optimally"
+  ],
+  "summary": {
+    "status": "good",
+    "criticalIssues": 0,
+    "warnings": 0
+  }
+}
