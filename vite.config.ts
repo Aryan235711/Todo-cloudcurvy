@@ -42,7 +42,10 @@ export default defineConfig(({ mode }) => {
         },
         minify: true,
         reportCompressedSize: true,
-        chunkSizeWarningLimit: 1000
+        chunkSizeWarningLimit: 1000,
+        // Asset optimization
+        assetsInlineLimit: 4096, // Inline small assets as base64
+        cssCodeSplit: true, // Split CSS for better caching
       }
     };
 });
