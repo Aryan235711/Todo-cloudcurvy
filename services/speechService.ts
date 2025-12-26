@@ -39,12 +39,18 @@ export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
   if (nativeSpeech) {
     console.log('🎤 Native speech plugin found, checking availability...');
     try {
-      const { available } = await nativeSpeech.available();
+      // Add timeout to prevent hanging
+      const availabilityPromise = nativeSpeech.available();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Availability check timeout')), 3000)
+      );
+      
+      const { available } = await Promise.race([availabilityPromise, timeoutPromise]) as any;
       console.log('🎤 Native speech available:', available);
-      return available ? 'native' : 'web'; // Fallback to web if native unavailable
+      return available ? 'native' : 'web';
     } catch (e) {
       console.warn('🎤 Native speech availability check failed', e);
-      // Don't return 'none' immediately, try web fallback
+      console.log('🎤 Falling back to web speech...');
     }
   } else {
     console.log('🎤 No native speech plugin found, checking web speech...');
