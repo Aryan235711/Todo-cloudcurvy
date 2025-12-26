@@ -365,8 +365,7 @@ export const useTodoLogic = () => {
   const filteredTodos = useMemo(() => {
     const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
     let list = todos.filter(t => {
-      const shouldFilter = t.deletedAt && t.deletedAt <= thirtyDaysAgo;
-      return !t.deletedAt || t.deletedAt <= thirtyDaysAgo;
+      return !t.deletedAt || t.deletedAt > thirtyDaysAgo;
     });
     
     if (filterCategory !== 'all') list = list.filter(t => t.category === filterCategory);
@@ -382,7 +381,7 @@ export const useTodoLogic = () => {
         return b.createdAt - a.createdAt;
       });
     }
-    if (sortMode === 'newest') list.sort((a, b) => b.createdAt - a.createdAt);
+    if (sortMode === 'newest') return list.sort((a, b) => b.createdAt - a.createdAt);
     else if (sortMode === 'priority') {
       list.sort((a, b) => {
         if (a.isUrgent && !b.isUrgent) return -1;
