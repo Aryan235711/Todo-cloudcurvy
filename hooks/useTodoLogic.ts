@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } from 'react';
 import { Todo, Template, Priority, Category } from '../types';
 import { generateTemplateFromPrompt } from '../services/geminiService';
@@ -39,7 +38,7 @@ export const useTodoLogic = () => {
     if (pendingCount <= 0) return 'Clear skies. Enjoy the calm.';
     const pool = [
       `One intent at a time. (${pendingCount} left)` ,
-      `Lightwork. Let’s close one. (${pendingCount} left)`,
+      `Lightwork. Let's close one. (${pendingCount} left)`,
       `Small steps compound. (${pendingCount} left)`,
       `Pick the easiest win first. (${pendingCount} left)`,
       `Keep it breezy—just one more. (${pendingCount} left)`,
@@ -240,12 +239,8 @@ export const useTodoLogic = () => {
 
   const toggleVoice = () => {
     if (voiceMode === 'none') {
-      const alreadyShown = localStorage.getItem('curvycloud_voice_hint_shown') === 'true';
-      if (!alreadyShown) {
-        localStorage.setItem('curvycloud_voice_hint_shown', 'true');
-        setVoiceHint('Voice input isn’t available on this device/build. Type your intent instead.');
-        setTimeout(() => setVoiceHint(null), 8000);
-      }
+      setVoiceHint('Voice input isn\'t available on this device/build. Type your intent instead.');
+      setTimeout(() => setVoiceHint(null), 8000);
       triggerHaptic('warning');
       return;
     }
@@ -266,16 +261,12 @@ export const useTodoLogic = () => {
           }
         } catch (e: any) {
           const code = (typeof e?.message === 'string' && e.message) ? e.message : '';
-          const alreadyShown = localStorage.getItem('curvycloud_voice_hint_shown') === 'true';
-          if (!alreadyShown) {
-            localStorage.setItem('curvycloud_voice_hint_shown', 'true');
-            if (code === 'VOICE_PERMISSION_DENIED') {
-              setVoiceHint('Enable microphone & speech permissions to use voice input.');
-            } else {
-              setVoiceHint('Voice input is unavailable right now.');
-            }
-            setTimeout(() => setVoiceHint(null), 8000);
+          if (code === 'VOICE_PERMISSION_DENIED') {
+            setVoiceHint('Enable microphone & speech permissions to use voice input.');
+          } else {
+            setVoiceHint('Voice input is unavailable right now.');
           }
+          setTimeout(() => setVoiceHint(null), 8000);
           triggerHaptic('warning');
         } finally {
           setIsListening(false);

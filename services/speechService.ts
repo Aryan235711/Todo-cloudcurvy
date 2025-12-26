@@ -19,6 +19,7 @@ const getNativeSpeech = async () => {
   if (!Capacitor.isNativePlatform()) return null;
   try {
     const mod = await import('@capacitor-community/speech-recognition');
+    if (import.meta.env.DEV) console.log('Native speech plugin loaded successfully');
     return mod.SpeechRecognition;
   } catch (e) {
     if (import.meta.env.DEV) console.warn('Native speech plugin unavailable', e);
@@ -27,15 +28,17 @@ const getNativeSpeech = async () => {
 };
 
 export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
+  if (import.meta.env.DEV) console.log('Checking voice mode...');
+  
   const nativeSpeech = await getNativeSpeech();
   if (nativeSpeech) {
     try {
       const { available } = await nativeSpeech.available();
       if (import.meta.env.DEV) console.log('Native speech available:', available);
-      return available ? 'native' : 'none';
+      return available ? 'native' : 'web'; // Fallback to web if native unavailable
     } catch (e) {
       if (import.meta.env.DEV) console.warn('Native speech availability check failed', e);
-      return 'none';
+      // Don't return 'none' immediately, try web fallback
     }
   }
 
