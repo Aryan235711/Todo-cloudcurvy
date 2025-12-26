@@ -31,19 +31,8 @@ class OfflineStorageService {
 
   saveTodos(todos: Todo[]): void {
     try {
-      // Clean up deleted tasks older than 30 days before saving
-      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      const cleanedTodos = todos.filter(t => !t.deletedAt || t.deletedAt > thirtyDaysAgo);
-      
-      localStorage.setItem(this.TODOS_KEY, JSON.stringify(cleanedTodos));
+      localStorage.setItem(this.TODOS_KEY, JSON.stringify(todos));
       this.updateLastSync();
-      
-      // Track storage optimization metrics
-      const originalSize = todos.length;
-      const cleanedSize = cleanedTodos.length;
-      if (originalSize > cleanedSize) {
-        console.log(`🧹 Storage optimized: ${originalSize} → ${cleanedSize} todos (${originalSize - cleanedSize} deleted tasks cleaned)`);
-      }
     } catch (error) {
       console.warn('Failed to save todos offline:', error);
     }

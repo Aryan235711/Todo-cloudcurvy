@@ -147,7 +147,7 @@ class NeuralNudgeHealthMonitor {
     
     // User preference alignment
     const notificationsEnabled = prefs.notifications?.enabled ? 1 : 0;
-    const hapticsEnabled = prefs.haptics?.enabled ? 1 : 0;
+    const hapticsEnabled = prefs.notifications?.enabled ? 1 : 0;
     
     // Engagement and streak metrics
     const engagementScore = notificationStats.engagementScore;
@@ -173,7 +173,7 @@ class NeuralNudgeHealthMonitor {
     const nudgesSent = this.metrics.get('nudges_sent_24h') || 1;
     
     // Rate limiting health (0-1)
-    const rateLimitHealth = rateLimitStatus.remaining / rateLimitStatus.limit;
+    const rateLimitHealth = rateLimitStatus.notificationsInWindow / rateLimitStatus.maxNotifications;
     
     // Response time health (assume good < 100ms, bad > 1000ms)
     const avgResponseTime = responseTimes.length > 0 
@@ -204,7 +204,7 @@ class NeuralNudgeHealthMonitor {
       optimalTimingAccuracy: predictiveInsights.confidence,
       contextualRelevance: this.calculateContextualRelevance(),
       behavioralPredictionAccuracy: behavioralInsights.confidence,
-      abTestConvergence: this.calculateABTestConvergence(activeExperiments)
+      abTestConvergence: this.calculateABTestConvergence(Object.values(activeExperiments))
     };
   }
 
@@ -247,7 +247,7 @@ class NeuralNudgeHealthMonitor {
       : 0;
     
     let rateLimitHealthStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
-    const rateLimitUsage = 1 - (rateLimitStatus.remaining / rateLimitStatus.limit);
+    const rateLimitUsage = rateLimitStatus.notificationsInWindow / rateLimitStatus.maxNotifications;
     
     if (rateLimitUsage > 0.9) rateLimitHealthStatus = 'critical';
     else if (rateLimitUsage > 0.7) rateLimitHealthStatus = 'warning';
@@ -257,7 +257,7 @@ class NeuralNudgeHealthMonitor {
       errorRate: errorCount / nudgesSent,
       responseTime: avgResponseTime,
       memoryUsage: this.estimateMemoryUsage(),
-      activeExperiments: activeExperiments.length
+      activeExperiments: Object.keys(activeExperiments).length
     };
   }
 
@@ -373,7 +373,7 @@ class NeuralNudgeHealthMonitor {
       recommendations,
       trends: trends.slice(-10), // Last 10 data points
       summary: {
-        status: healthScore.then ? 'pending' : this.getOverallStatus(healthScore),
+        status: 'pending',
         criticalIssues: recommendations.filter(r => r.includes('🚨')).length,
         warnings: recommendations.filter(r => r.includes('⚠️')).length
       }

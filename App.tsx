@@ -222,10 +222,8 @@ const App: React.FC = () => {
     if (todo) {
       analyticsService.trackTaskAbandoned(id);
       setTodos(prev => {
-        const updated = prev.map(t => 
-          t.id === id ? { ...t, deletedAt: Date.now() } : t
-        );
-        return updated;
+        // Actually remove the task instead of soft delete for immediate UI update
+        return prev.filter(t => t.id !== id);
       });
     }
     triggerHaptic('heavy');
@@ -273,7 +271,7 @@ const App: React.FC = () => {
 
   // Clean up selection state when todos change
   useEffect(() => {
-    const activeTodoIds = new Set(todos.filter(t => !t.deletedAt).map(t => t.id));
+    const activeTodoIds = new Set(todos.map(t => t.id));
     setSelectedTodos(prev => {
       const filtered = new Set([...prev].filter(id => activeTodoIds.has(id)));
       return filtered.size !== prev.size ? filtered : prev;
@@ -302,12 +300,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleBulkDelete = useCallback(() => {
-    // Use soft delete for consistency with individual delete
-    setTodos(prev => prev.map(todo => 
-      selectedTodos.has(todo.id) 
-        ? { ...todo, deletedAt: Date.now() }
-        : todo
-    ));
+    // Actually remove tasks instead of soft delete
+    setTodos(prev => prev.filter(todo => !selectedTodos.has(todo.id)));
     
     // Track abandoned tasks for analytics
     selectedTodos.forEach(id => {
@@ -329,12 +323,8 @@ const App: React.FC = () => {
   }, [selectedTodos, setTodos]);
 
   const handleBundleDelete = useCallback((bundleName: string) => {
-    // Use soft delete and track analytics for bundle tasks
-    setTodos(prev => prev.map(todo => 
-      todo.templateName === bundleName
-        ? { ...todo, deletedAt: Date.now() }
-        : todo
-    ));
+    // Actually remove bundle tasks instead of soft delete
+    setTodos(prev => prev.filter(todo => todo.templateName !== bundleName));
     
     // Track abandoned tasks for analytics
     const bundleTasks = todos.filter(t => t.templateName === bundleName);
