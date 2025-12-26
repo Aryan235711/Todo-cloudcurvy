@@ -26,11 +26,21 @@ export default defineConfig(({ mode }) => {
           output: {
             manualChunks: {
               vendor: ['react', 'react-dom'],
-              ui: ['lucide-react']
+              capacitor: [
+                '@capacitor/core',
+                '@capacitor/haptics', 
+                '@capacitor/preferences',
+                '@capacitor/local-notifications',
+                '@capacitor/push-notifications'
+              ],
+              ai: ['@google/genai'],
+              icons: ['lucide-react']
             }
           }
         },
-        minify: false
+        minify: true,
+        reportCompressedSize: true,
+        chunkSizeWarningLimit: 1000
       }
     };
 });
