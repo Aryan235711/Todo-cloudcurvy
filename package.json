@@ -1,7 +1,8 @@
 {
-  "name": "loop-todo",
+  "name": "loop-community",
   "private": true,
   "version": "1.0.0",
+  "description": "Loop Community - Open source productivity app with gesture-based task management",
   "type": "module",
   "scripts": {
     "dev": "vite",
