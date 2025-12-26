@@ -35,17 +35,16 @@ export default defineConfig(({ mode }) => {
               ],
               ai: ['@google/genai'],
               icons: ['lucide-react'],
-              // Separate notification services to resolve dynamic import warning
-              notifications: ['./services/notificationService']
+              notifications: ['./services/notificationService'],
+              storage: ['./services/indexedDBService']
             }
           }
         },
         minify: true,
         reportCompressedSize: true,
         chunkSizeWarningLimit: 1000,
-        // Asset optimization
-        assetsInlineLimit: 4096, // Inline small assets as base64
-        cssCodeSplit: true, // Split CSS for better caching
+        assetsInlineLimit: 4096,
+        cssCodeSplit: true,
       }
     };
 });
