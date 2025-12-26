@@ -1,4 +1,5 @@
 // Enterprise-Grade Rate Limiting & Temporal Controls
+import { securityService } from './securityService';
 interface RateLimitConfig {
   maxNotifications: number;
   timeWindow: number; // in milliseconds
@@ -29,7 +30,7 @@ class RateLimitService {
   }
 
   private loadState() {
-    const stored = localStorage.getItem('curvycloud_rate_limit_state');
+    const stored = securityService.safeLocalStorageGet('curvycloud_rate_limit_state');
     if (stored) {
       try {
         const state = JSON.parse(stored);
@@ -41,18 +42,26 @@ class RateLimitService {
         const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
         this.attempts = this.attempts.filter(a => a.timestamp > dayAgo);
       } catch (e) {
+        // Reset all state on parse error
         this.attempts = [];
+        this.lastNotificationTime = 0;
+        this.consecutiveFailures = 0;
       }
     }
   }
 
   private saveState() {
     const state = {
-      attempts: this.attempts.slice(-50), // Keep last 50 attempts
+      attempts: this.attempts.slice(-50),
       lastNotificationTime: this.lastNotificationTime,
       consecutiveFailures: this.consecutiveFailures
     };
-    localStorage.setItem('curvycloud_rate_limit_state', JSON.stringify(state));
+    
+    try {
+      securityService.safeLocalStorageSet('curvycloud_rate_limit_state', JSON.stringify(state));
+    } catch (error) {
+      console.warn('[Rate Limit] Failed to save state:', securityService.sanitizeForLogging(String(error)));
+    }
   }
 
   canSendNotification(type: 'intervention' | 'contextual' | 'motivational'): boolean {
@@ -93,20 +102,29 @@ class RateLimitService {
     
     this.attempts.push({
       timestamp: now,
-      type,
+      type: securityService.validateNotificationType(type),
       success
     });
 
+    // Prevent memory leaks by limiting array size
+    if (this.attempts.length > 100) {
+      this.attempts = this.attempts.slice(-50);
+    }
+
+    // Clean old attempts (older than 24 hours)
+    const dayAgo = now - 24 * 60 * 60 * 1000;
+    this.attempts = this.attempts.filter(a => a.timestamp > dayAgo);
+
     if (success) {
       this.lastNotificationTime = now;
-      this.consecutiveFailures = 0; // Reset failure count on success
+      this.consecutiveFailures = 0;
     } else {
       this.consecutiveFailures++;
     }
 
     this.saveState();
     
-    console.log(`[Rate Limit] Recorded ${type} notification: ${success ? 'success' : 'failed'}`);
+    console.log(`[Rate Limit] Recorded ${securityService.sanitizeForLogging(type)} notification: ${success ? 'success' : 'failed'}`);
   }
 
   getNextAllowedTime(): number {

@@ -10,10 +10,12 @@ import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } fro
 import { abTestService } from './abTestService';
 import { rateLimitService } from './rateLimitService';
 import { userPreferencesService } from './userPreferencesService';
+import { securityService } from './securityService';
 
 const analytics = {
-  track: (event: string, data: any) => {
-    console.log(`[Analytics] ${event}`, data);
+  track: (event: string, data: Record<string, unknown>) => {
+    const sanitizedData = securityService.sanitizeAnalyticsData(data);
+    console.log(`[Analytics] ${securityService.sanitizeForLogging(event)}`, sanitizedData);
   }
 };
 
@@ -381,22 +383,26 @@ export const registerPushNotifications = async () => {
     await PushNotifications.register();
 
     PushNotifications.addListener('registration', (token: Token) => {
-      analytics.track('push_token_registered', { token: token.value });
-      console.log('Push registration success, token: ' + token.value);
+      analytics.track('push_token_registered', { token: securityService.sanitizeForLogging(token.value) });
+      console.log('Push registration success, token: ' + securityService.sanitizeForLogging(token.value));
     });
 
     PushNotifications.addListener('registrationError', (error: any) => {
-      analytics.track('push_registration_error', { error: error.error });
-      console.error('Push registration error: ', error.error);
+      analytics.track('push_registration_error', { error: securityService.sanitizeForLogging(String(error.error)) });
+      console.error('Push registration error: ', securityService.sanitizeForLogging(String(error.error)));
     });
 
     PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
       analytics.track('push_received', { 
-        title: notification.title,
-        body: notification.body,
+        title: securityService.sanitizeForLogging(notification.title || ''),
+        body: securityService.sanitizeForLogging(notification.body || ''),
         id: notification.id 
       });
-      console.log('Push notification received: ', notification);
+      console.log('Push notification received: ', {
+        title: securityService.sanitizeForLogging(notification.title || ''),
+        body: securityService.sanitizeForLogging(notification.body || ''),
+        id: notification.id
+      });
     });
 
     PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
@@ -556,7 +562,10 @@ export const sendNudge = async (
       return new Promise(resolve => {
         window.setTimeout(() => {
           try {
-            new Notification(finalTitle, { body: finalBody, icon: '/favicon.ico' });
+            new Notification(securityService.sanitizeForHTML(finalTitle), { 
+              body: securityService.sanitizeForHTML(finalBody), 
+              icon: '/favicon.ico' 
+            });
             resolve(true);
           } catch {
             resolve(false);
@@ -564,7 +573,10 @@ export const sendNudge = async (
         }, delayMs);
       });
     } else {
-      new Notification(finalTitle, { body: finalBody, icon: '/favicon.ico' });
+      new Notification(securityService.sanitizeForHTML(finalTitle), { 
+        body: securityService.sanitizeForHTML(finalBody), 
+        icon: '/favicon.ico' 
+      });
       return true;
     }
   } catch {
@@ -620,11 +632,15 @@ export const sendContextualNudge = async (
   }
   
   try {
-    const success = await sendNudge('Task Reminder', 'You have a pending task', {
-      ...opts,
-      smart: true,
-      context
-    });
+    const success = await sendNudge(
+      securityService.sanitizeForHTML('Task Reminder'), 
+      securityService.sanitizeForHTML('You have a pending task'), 
+      {
+        ...opts,
+        smart: true,
+        context
+      }
+    );
     
     rateLimitService.recordNotificationAttempt('contextual', success);
     return success;
