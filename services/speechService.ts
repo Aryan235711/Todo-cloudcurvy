@@ -31,6 +31,7 @@ export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
   if (nativeSpeech) {
     try {
       const { available } = await nativeSpeech.available();
+      if (import.meta.env.DEV) console.log('Native speech available:', available);
       return available ? 'native' : 'none';
     } catch (e) {
       if (import.meta.env.DEV) console.warn('Native speech availability check failed', e);
@@ -40,7 +41,9 @@ export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
 
   const win = window as CurvyWindow;
   const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
-  return SpeechRecognition ? 'web' : 'none';
+  const webAvailable = !!SpeechRecognition;
+  if (import.meta.env.DEV) console.log('Web speech available:', webAvailable);
+  return webAvailable ? 'web' : 'none';
 };
 
 export const startNativeVoice = async (opts: { language?: string; prompt?: string }): Promise<string | null> => {
@@ -50,12 +53,16 @@ export const startNativeVoice = async (opts: { language?: string; prompt?: strin
   let perm: { speechRecognition?: string };
   try {
     perm = await nativeSpeech.requestPermissions();
+    if (import.meta.env.DEV) console.log('Voice permissions:', perm);
   } catch (e) {
     if (import.meta.env.DEV) console.warn('Voice permission request failed', e);
     throw new Error('VOICE_PERMISSION_ERROR');
   }
 
-  if (perm?.speechRecognition !== 'granted') throw new Error('VOICE_PERMISSION_DENIED');
+  if (perm?.speechRecognition !== 'granted') {
+    if (import.meta.env.DEV) console.warn('Voice permission denied:', perm?.speechRecognition);
+    throw new Error('VOICE_PERMISSION_DENIED');
+  }
 
   let res: { matches?: string[] };
   try {
