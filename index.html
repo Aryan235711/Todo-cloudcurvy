@@ -80,5 +80,14 @@
 <body class="text-slate-700">
   <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
+<script>
+  // Register service worker for caching
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .catch(() => {}); // Silent fail for better UX
+    });
+  }
+</script>
 </body>
 </html>
