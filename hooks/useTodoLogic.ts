@@ -5,6 +5,7 @@ import { generateTemplateFromPrompt } from '../services/geminiService';
 import { triggerHaptic, sendNudge } from '../services/notificationService';
 import { getStoredApiKey } from '../services/apiKeyService';
 import { getVoiceMode, startNativeVoice, stopNativeVoice } from '../services/speechService';
+import { parseVoiceCommand } from '../services/voiceCommandService';
 import { offlineStorageService } from '../services/offlineStorageService';
 import { useNetworkStatus } from './useNetworkStatus';
 
@@ -214,7 +215,9 @@ export const useTodoLogic = () => {
       recognitionRef.current = recognition;
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
-        setInputValue(prev => (prev ? prev + ' ' + capitalize(transcript) : capitalize(transcript)));
+        const parsed = parseVoiceCommand(transcript);
+        setInputValue(prev => (prev ? prev + ' ' + capitalize(parsed.text) : capitalize(parsed.text)));
+        if (parsed.priority) setActivePriority(parsed.priority);
         setIsListening(false);
       };
       recognitionRef.current.onerror = () => {
@@ -256,7 +259,11 @@ export const useTodoLogic = () => {
       void (async () => {
         try {
           const transcript = await startNativeVoice({ prompt: 'Speak your task' });
-          if (transcript) setInputValue(prev => (prev ? prev + ' ' + capitalize(transcript) : capitalize(transcript)));
+          if (transcript) {
+            const parsed = parseVoiceCommand(transcript);
+            setInputValue(prev => (prev ? prev + ' ' + capitalize(parsed.text) : capitalize(parsed.text)));
+            if (parsed.priority) setActivePriority(parsed.priority);
+          }
         } catch (e: any) {
           const code = (typeof e?.message === 'string' && e.message) ? e.message : '';
           const alreadyShown = localStorage.getItem('curvycloud_voice_hint_shown') === 'true';
