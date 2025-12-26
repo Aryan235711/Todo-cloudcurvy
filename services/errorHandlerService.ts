@@ -3,6 +3,14 @@
  * Centralized error handling without crashing the app
  */
 
+declare global {
+  interface Window {
+    analytics?: {
+      track: (event: string, properties?: any) => void;
+    };
+  }
+}
+
 class ErrorHandlerService {
   private errorCount = 0;
   private readonly MAX_ERRORS = 10;
