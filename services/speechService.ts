@@ -35,32 +35,22 @@ const getNativeSpeech = async () => {
 export const getVoiceMode = async (): Promise<'native' | 'web' | 'none'> => {
   console.log('🎤 Checking voice mode...');
   
-  const nativeSpeech = await getNativeSpeech();
-  if (nativeSpeech) {
-    console.log('🎤 Native speech plugin found, checking availability...');
-    try {
-      // Add timeout to prevent hanging
-      const availabilityPromise = nativeSpeech.available();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Availability check timeout')), 3000)
-      );
-      
-      const { available } = await Promise.race([availabilityPromise, timeoutPromise]) as any;
-      console.log('🎤 Native speech available:', available);
-      return available ? 'native' : 'web';
-    } catch (e) {
-      console.warn('🎤 Native speech availability check failed', e);
-      console.log('🎤 Falling back to web speech...');
-    }
-  } else {
-    console.log('🎤 No native speech plugin found, checking web speech...');
-  }
-
+  // Skip native speech on iOS for now due to availability check hanging
+  // Go straight to web speech which works reliably on Safari/iOS
+  console.log('🎤 Skipping native speech, checking web speech directly...');
+  
   const win = window as CurvyWindow;
   const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
   const webAvailable = !!SpeechRecognition;
   console.log('🎤 Web speech available:', webAvailable);
-  return webAvailable ? 'web' : 'none';
+  
+  if (webAvailable) {
+    console.log('🎤 Voice mode detected: web');
+    return 'web';
+  } else {
+    console.log('🎤 Voice mode detected: none');
+    return 'none';
+  }
 };
 
 export const startNativeVoice = async (opts: { language?: string; prompt?: string }): Promise<string | null> => {
