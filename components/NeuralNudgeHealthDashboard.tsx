@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { neuralNudgeHealthMonitor, type HealthScore, type PerformanceMetrics, type SystemHealth } from '../services/neuralNudgeHealthMonitor';
+import { HEALTH_THRESHOLDS } from '../config/chartConstants';
 
 interface HealthDashboardProps {
   refreshInterval?: number; // in milliseconds
@@ -50,26 +51,26 @@ const NeuralNudgeHealthDashboard: React.FC<HealthDashboardProps> = ({
   }, [refreshInterval]);
 
   const getScoreColor = (score: number): string => {
-    if (score >= 0.9) return 'text-green-600';
-    if (score >= 0.75) return 'text-blue-600';
-    if (score >= 0.6) return 'text-yellow-600';
-    if (score >= 0.4) return 'text-orange-600';
+    if (score >= HEALTH_THRESHOLDS.EXCELLENT) return 'text-green-600';
+    if (score >= HEALTH_THRESHOLDS.GOOD) return 'text-blue-600';
+    if (score >= HEALTH_THRESHOLDS.FAIR) return 'text-yellow-600';
+    if (score >= HEALTH_THRESHOLDS.POOR) return 'text-orange-600';
     return 'text-red-600';
   };
 
   const getScoreBackground = (score: number): string => {
-    if (score >= 0.9) return 'bg-green-100';
-    if (score >= 0.75) return 'bg-blue-100';
-    if (score >= 0.6) return 'bg-yellow-100';
-    if (score >= 0.4) return 'bg-orange-100';
+    if (score >= HEALTH_THRESHOLDS.EXCELLENT) return 'bg-green-100';
+    if (score >= HEALTH_THRESHOLDS.GOOD) return 'bg-blue-100';
+    if (score >= HEALTH_THRESHOLDS.FAIR) return 'bg-yellow-100';
+    if (score >= HEALTH_THRESHOLDS.POOR) return 'bg-orange-100';
     return 'bg-red-100';
   };
 
   const getStatusIcon = (score: number): string => {
-    if (score >= 0.9) return '🟢';
-    if (score >= 0.75) return '🔵';
-    if (score >= 0.6) return '🟡';
-    if (score >= 0.4) return '🟠';
+    if (score >= HEALTH_THRESHOLDS.EXCELLENT) return '🟢';
+    if (score >= HEALTH_THRESHOLDS.GOOD) return '🔵';
+    if (score >= HEALTH_THRESHOLDS.FAIR) return '🟡';
+    if (score >= HEALTH_THRESHOLDS.POOR) return '🟠';
     return '🔴';
   };
 

@@ -6,6 +6,7 @@
 import { abTestService } from './abTestService';
 import { rateLimitService } from './rateLimitService';
 import { userPreferencesService } from './userPreferencesService';
+import { CALCULATION_WEIGHTS, PERFORMANCE_THRESHOLDS, RATE_LIMIT_THRESHOLDS, HEALTH_THRESHOLDS } from '../config/chartConstants';
 import { 
   getNotificationStats, 
   getBehavioralInsights, 
@@ -114,9 +115,9 @@ class NeuralNudgeHealthMonitor {
     
     // Combine metrics (weighted)
     const effectiveness = (
-      conversionRate * 0.4 +           // 40% weight on actual completions
-      engagementRate * 0.3 +           // 30% weight on user engagement
-      predictionAccuracy * 0.3         // 30% weight on prediction accuracy
+      conversionRate * CALCULATION_WEIGHTS.EFFECTIVENESS.CONVERSION_RATE +
+      engagementRate * CALCULATION_WEIGHTS.EFFECTIVENESS.ENGAGEMENT_RATE +
+      predictionAccuracy * CALCULATION_WEIGHTS.EFFECTIVENESS.PREDICTION_ACCURACY
     );
     
     return Math.min(1, effectiveness);
@@ -157,10 +158,10 @@ class NeuralNudgeHealthMonitor {
     const quietTimeRespect = notificationStats.isQuietTime ? 0.8 : 1; // Slight penalty if sending during quiet time
     
     const satisfaction = (
-      (notificationsEnabled + hapticsEnabled) / 2 * 0.3 +  // 30% preference alignment
-      engagementScore * 0.4 +                               // 40% engagement
-      streakBonus * 0.2 +                                   // 20% streak performance
-      quietTimeRespect * 0.1                                // 10% timing respect
+      (notificationsEnabled + hapticsEnabled) / 2 * CALCULATION_WEIGHTS.USER_SATISFACTION.PREFERENCE_ALIGNMENT +
+      engagementScore * CALCULATION_WEIGHTS.USER_SATISFACTION.ENGAGEMENT_SCORE +
+      streakBonus * CALCULATION_WEIGHTS.USER_SATISFACTION.STREAK_BONUS +
+      quietTimeRespect * CALCULATION_WEIGHTS.USER_SATISFACTION.TIMING_RESPECT
     );
     
     return Math.min(1, satisfaction);
@@ -179,15 +180,15 @@ class NeuralNudgeHealthMonitor {
     const avgResponseTime = responseTimes.length > 0 
       ? responseTimes.reduce((a: number, b: number) => a + b, 0) / responseTimes.length 
       : 50;
-    const responseTimeHealth = Math.max(0, Math.min(1, (1000 - avgResponseTime) / 1000));
+    const responseTimeHealth = Math.max(0, Math.min(1, (PERFORMANCE_THRESHOLDS.RESPONSE_TIME.BAD_MS - avgResponseTime) / PERFORMANCE_THRESHOLDS.RESPONSE_TIME.BAD_MS));
     
     // Error rate health
     const errorRateHealth = Math.max(0, 1 - (errorRate / nudgesSent));
     
     const systemHealth = (
-      rateLimitHealth * 0.4 +      // 40% rate limiting
-      responseTimeHealth * 0.3 +   // 30% response time
-      errorRateHealth * 0.3        // 30% error rate
+      rateLimitHealth * CALCULATION_WEIGHTS.SYSTEM_HEALTH.RATE_LIMIT +
+      responseTimeHealth * CALCULATION_WEIGHTS.SYSTEM_HEALTH.RESPONSE_TIME +
+      errorRateHealth * CALCULATION_WEIGHTS.SYSTEM_HEALTH.ERROR_RATE
     );
     
     return systemHealth;
@@ -227,7 +228,7 @@ class NeuralNudgeHealthMonitor {
     let totalConvergence = 0;
     experiments.forEach(exp => {
       const sampleSize = exp.metrics?.sample_size || 0;
-      const confidence = Math.min(1, sampleSize / 100); // Assume 100 samples for good confidence
+      const confidence = Math.min(1, sampleSize / PERFORMANCE_THRESHOLDS.AB_TEST.CONFIDENCE_SAMPLE_SIZE);
       totalConvergence += confidence;
     });
     
@@ -249,8 +250,8 @@ class NeuralNudgeHealthMonitor {
     let rateLimitHealthStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
     const rateLimitUsage = rateLimitStatus.notificationsInWindow / rateLimitStatus.maxNotifications;
     
-    if (rateLimitUsage > 0.9) rateLimitHealthStatus = 'critical';
-    else if (rateLimitUsage > 0.7) rateLimitHealthStatus = 'warning';
+    if (rateLimitUsage > RATE_LIMIT_THRESHOLDS.CRITICAL) rateLimitHealthStatus = 'critical';
+    else if (rateLimitUsage > RATE_LIMIT_THRESHOLDS.WARNING) rateLimitHealthStatus = 'warning';
     
     return {
       rateLimitStatus: rateLimitHealthStatus,
@@ -381,10 +382,10 @@ class NeuralNudgeHealthMonitor {
   }
 
   private getOverallStatus(healthScore: HealthScore): 'excellent' | 'good' | 'fair' | 'poor' | 'critical' {
-    if (healthScore.overall >= 0.9) return 'excellent';
-    if (healthScore.overall >= 0.75) return 'good';
-    if (healthScore.overall >= 0.6) return 'fair';
-    if (healthScore.overall >= 0.4) return 'poor';
+    if (healthScore.overall >= HEALTH_THRESHOLDS.EXCELLENT) return 'excellent';
+    if (healthScore.overall >= HEALTH_THRESHOLDS.GOOD) return 'good';
+    if (healthScore.overall >= HEALTH_THRESHOLDS.FAIR) return 'fair';
+    if (healthScore.overall >= HEALTH_THRESHOLDS.POOR) return 'poor';
     return 'critical';
   }
 }

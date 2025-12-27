@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCheck, Package, BellRing, Zap, ChevronDown, Trash2 } from 'lucide-react';
 import { Todo } from '../../../types';
 import { TodoCard } from '../../TodoCard';
+import { CHART_CONSTANTS } from '../../../config/chartConstants';
 
 interface TodoBundleProps {
   name: string;
@@ -131,7 +132,7 @@ export const TodoBundle: React.FC<TodoBundleProps> = ({
                       <div 
                         className={`absolute inset-0 rounded-full transition-all duration-700 ${isAllCompleted ? 'bg-emerald-400' : 'bg-sky-400'}`} 
                         style={{ 
-                          background: `conic-gradient(${isAllCompleted ? '#34d399' : '#60a5fa'} ${progressPercent * 3.6}deg, #f1f5f9 0deg)` 
+                          background: `conic-gradient(${isAllCompleted ? '#34d399' : '#60a5fa'} ${progressPercent * CHART_CONSTANTS.PROGRESS_CIRCLE.DEGREES_MULTIPLIER}deg, #f1f5f9 0deg)` 
                         }} 
                       />
                     </div>

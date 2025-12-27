@@ -7,6 +7,7 @@ import { runPhase5Tests, logPhase5Results, Phase5TestResult } from '../services/
 import { runPhase6Tests, logPhase6Results, Phase6TestResult } from '../services/phase6TestRunner';
 import { ExportDashboard } from './ExportDashboard';
 import { useActivityTracker } from '../hooks/useActivityTracker';
+import { PERFORMANCE_THRESHOLDS } from '../config/chartConstants';
 
 interface PhaseTestResult {
   name: string;
@@ -432,7 +433,7 @@ export const UnifiedTestDashboard: React.FC = () => {
               <h4 className="font-medium text-gray-700 mb-2">Phase 2 Testing</h4>
               <p className="text-sm text-gray-600">
                 {phase2Results.length === 0 ? 'Not tested yet' :
-                 phase2AllPassed && phase2Coverage >= 60 ? `✅ All tests passed - ${phase2Coverage.toFixed(1)}% coverage` :
+                 phase2AllPassed && phase2Coverage >= PERFORMANCE_THRESHOLDS.TEST_COVERAGE.MINIMUM_PERCENTAGE ? `✅ All tests passed - ${phase2Coverage.toFixed(1)}% coverage` :
                  `⚠️ ${phase2Coverage.toFixed(1)}% coverage - Needs improvement`}
               </p>
             </div>

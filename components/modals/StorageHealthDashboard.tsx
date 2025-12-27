@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Database, AlertTriangle, CheckCircle, Zap, HardDrive, Trash2 } from 'lucide-react';
 import { storageHealthAnalyzer } from '../../services/storageHealthAnalyzer';
+import { HEALTH_THRESHOLDS } from '../../config/chartConstants';
 
 interface StorageHealthDashboardProps {
   isOpen: boolean;
