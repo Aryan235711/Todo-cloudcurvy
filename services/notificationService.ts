@@ -11,83 +11,11 @@ import { abTestService } from './abTestService';
 import { rateLimitService } from './rateLimitService';
 import { userPreferencesService } from './userPreferencesService';
 import { securityService } from './securityService';
+import { enhancedLearning } from './enhancedLearningEngine';
+import { LEARNING_CONSTANTS } from '../config/behavioralConstants';
 
-// Intelligent Feedback Engine for real-time learning
-class IntelligentFeedbackEngine {
-  private userModels: Map<string, any>;
-  private learningRate: number;
-
-  constructor() {
-    this.userModels = new Map();
-    this.learningRate = 0.1;
-  }
-
-  processUserFeedback(userId: string, messageType: string, outcome: any) {
-    const model = this.getUserModel(userId);
-    const signal = this.calculateFeedbackSignal(outcome);
-    
-    // Update message effectiveness
-    if (!model.messageEffectiveness[messageType]) {
-      model.messageEffectiveness[messageType] = 0.5;
-    }
-    model.messageEffectiveness[messageType] += signal * this.learningRate;
-    model.messageEffectiveness[messageType] = Math.max(0, Math.min(1, model.messageEffectiveness[messageType]));
-    
-    // Store interaction for pattern recognition
-    model.interactions.push({
-      timestamp: Date.now(),
-      messageType,
-      outcome,
-      signal
-    });
-    
-    // Keep only recent interactions
-    if (model.interactions.length > 50) {
-      model.interactions = model.interactions.slice(-50);
-    }
-  }
-
-  calculateFeedbackSignal(outcome: any) {
-    let signal = 0;
-    if (outcome.completed) signal += 1.0;
-    if (outcome.engaged) signal += 0.5;
-    if (outcome.ignored) signal -= 0.5;
-    if (outcome.frustrated) signal -= 0.8;
-    return Math.max(-1, Math.min(1, signal));
-  }
-
-  getUserModel(userId: string) {
-    if (!this.userModels.has(userId)) {
-      this.userModels.set(userId, {
-        messageEffectiveness: {},
-        interactions: [],
-        createdAt: Date.now()
-      });
-    }
-    return this.userModels.get(userId);
-  }
-
-  getOptimalMessageType(userId: string, context: any) {
-    const model = this.getUserModel(userId);
-    const messageTypes = ['motivational', 'gentle', 'urgent', 'celebration'];
-    
-    // Find most effective message type for this user
-    let bestType = 'motivational';
-    let bestScore = 0.5;
-    
-    messageTypes.forEach(type => {
-      const effectiveness = model.messageEffectiveness[type] || 0.5;
-      if (effectiveness > bestScore) {
-        bestScore = effectiveness;
-        bestType = type;
-      }
-    });
-    
-    return { type: bestType, confidence: bestScore };
-  }
-}
-
-const intelligentFeedback = new IntelligentFeedbackEngine();
+// Enhanced Intelligent Feedback Engine (replaced with persistent learning)
+const intelligentFeedback = enhancedLearning;
 
 const analytics = {
   track: (event: string, data: Record<string, unknown>) => {
@@ -332,21 +260,31 @@ class SmartScheduler {
     const timeSinceActivity = now - this.pattern.lastActivity;
     const daysSinceCompletion = (now - this.pattern.lastCompletionTime) / (24 * 60 * 60 * 1000);
     
-    // Procrastination risk assessment
+    // Get personalized thresholds from enhanced learning
+    const insights = enhancedLearning.getModelInsights();
+    const thresholds = insights.personalizedThresholds || {
+      procrastinationHigh: LEARNING_CONSTANTS.RISK_THRESHOLDS.PROCRASTINATION.HIGH_DAYS,
+      procrastinationMedium: LEARNING_CONSTANTS.RISK_THRESHOLDS.PROCRASTINATION.MEDIUM_DAYS,
+      activityTimeout: LEARNING_CONSTANTS.RISK_THRESHOLDS.PROCRASTINATION.ACTIVITY_HOURS
+    };
+    
+    // Personalized procrastination risk assessment
     let procrastinationRisk: 'low' | 'medium' | 'high' = 'low';
-    if (daysSinceCompletion > 2) procrastinationRisk = 'high';
-    else if (daysSinceCompletion > 1 || timeSinceActivity > 4 * 60 * 60 * 1000) procrastinationRisk = 'medium';
+    if (daysSinceCompletion > thresholds.procrastinationHigh) procrastinationRisk = 'high';
+    else if (daysSinceCompletion > thresholds.procrastinationMedium || 
+             timeSinceActivity > thresholds.activityTimeout * 60 * 60 * 1000) procrastinationRisk = 'medium';
     
     // Intervention timing based on engagement and risk
     let interventionTiming: 'immediate' | 'gentle' | 'delayed' = 'gentle';
     if (procrastinationRisk === 'high' && this.pattern.engagementScore < 0.3) interventionTiming = 'immediate';
     else if (this.pattern.engagementScore > 0.7) interventionTiming = 'delayed';
     
-    // Completion probability based on patterns
+    // Enhanced completion probability with model accuracy
     const baseProb = Math.max(0.1, this.pattern.engagementScore);
     const streakBonus = Math.min(0.3, this.pattern.completionStreak * 0.05);
     const riskPenalty = procrastinationRisk === 'high' ? 0.2 : procrastinationRisk === 'medium' ? 0.1 : 0;
-    const completionProbability = Math.min(0.95, baseProb + streakBonus - riskPenalty);
+    const modelAccuracy = insights.accuracy || 0.5;
+    const completionProbability = Math.min(0.95, (baseProb + streakBonus - riskPenalty) * modelAccuracy);
     
     // Suggested action
     const actions = {
@@ -360,11 +298,22 @@ class SmartScheduler {
       interventionTiming,
       completionProbability,
       suggestedAction: actions[procrastinationRisk],
-      confidence: Math.min(0.9, this.pattern.completionHistory.length * 0.1)
+      confidence: Math.min(0.9, modelAccuracy)
     };
   }
 
   generateMotivationalMessage(context: MotivationContext): { title: string; body: string } {
+    // Use enhanced learning for optimal message selection
+    const prediction = enhancedLearning.predictOptimalMessageType({
+      timeOfDay: context.timeOfDay,
+      priority: context.priority,
+      streak: context.streak,
+      engagement: context.engagement
+    });
+    
+    const messageType = prediction.confidence > 0.6 ? 
+      (prediction.prediction > 0.7 ? 'celebration' : 'motivational') : 'encouraging';
+    
     // A/B Test: Message Tone
     const toneVariant = abTestService.getVariant('message_tone');
     
@@ -940,17 +889,18 @@ export const getActiveExperiments = () => {
   return abTestService.getCurrentExperiments();
 };
 
-// Intelligent feedback functions
-export const recordUserFeedback = (userId: string, messageType: string, outcome: { completed: boolean; engaged: boolean; ignored: boolean; frustrated: boolean }) => {
-  intelligentFeedback.processUserFeedback(userId, messageType, outcome);
+// Enhanced intelligent feedback functions with persistent learning
+export const recordUserFeedback = (userId: string, messageType: string, outcome: { completed: boolean; engaged: boolean; ignored: boolean; frustrated: boolean }, context?: string) => {
+  enhancedLearning.processUserFeedback(messageType, outcome, context);
 };
 
-export const getIntelligentInsights = (userId: string) => {
-  const model = intelligentFeedback.getUserModel(userId);
+export const getIntelligentInsights = (userId: string = 'default') => {
+  const insights = enhancedLearning.getModelInsights();
   return {
-    messageEffectiveness: model.messageEffectiveness,
-    totalInteractions: model.interactions.length,
-    recentPerformance: model.interactions.slice(-10).map(i => ({ type: i.messageType, signal: i.signal })),
-    optimalMessageType: intelligentFeedback.getOptimalMessageType(userId, {})
+    messageEffectiveness: insights.messageEffectiveness,
+    totalInteractions: insights.totalInteractions,
+    modelAccuracy: insights.accuracy,
+    personalizedThresholds: insights.personalizedThresholds,
+    lastUpdated: insights.lastUpdated
   };
 };
