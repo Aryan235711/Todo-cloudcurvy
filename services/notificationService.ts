@@ -582,7 +582,7 @@ export const sendNudge = async (
           try {
             new Notification(securityService.sanitizeForHTML(finalTitle), { 
               body: securityService.sanitizeForHTML(finalBody), 
-              icon: '/favicon.ico' 
+              icon: '/icon-192.png' 
             });
             resolve(true);
           } catch {
@@ -593,7 +593,7 @@ export const sendNudge = async (
     } else {
       new Notification(securityService.sanitizeForHTML(finalTitle), { 
         body: securityService.sanitizeForHTML(finalBody), 
-        icon: '/favicon.ico' 
+        icon: '/icon-192.png' 
       });
       return true;
     }

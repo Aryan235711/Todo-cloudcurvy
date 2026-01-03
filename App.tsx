@@ -30,7 +30,6 @@ import { LibraryModal } from './components/modals/LibraryModal';
 import { ReviewModal } from './components/modals/ReviewModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { NeuralNudgeDashboard } from './components/modals/NeuralNudgeDashboard';
-import { UnifiedTestDashboard } from './components/UnifiedTestDashboard';
 
 // Import test runner for development
 if (process.env.NODE_ENV === 'development') {
@@ -46,7 +45,6 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const App: React.FC = () => {
-  const [showTestDashboard, setShowTestDashboard] = useState(false);
   const [showCustomPurgeModal, setShowCustomPurgeModal] = useState(false);
   const [isNeuralNudgeOpen, setIsNeuralNudgeOpen] = useState(false);
   const [neuralNudgeData, setNeuralNudgeData] = useState<{
@@ -430,7 +428,6 @@ const App: React.FC = () => {
 
   if (showOnboarding === null) return null;
   if (showOnboarding) return <Onboarding onComplete={handleFinishOnboarding} />;
-  if (showTestDashboard) return <UnifiedTestDashboard />;
 
   return (
     <div className="app-scroller no-scrollbar">
@@ -450,19 +447,6 @@ const App: React.FC = () => {
           motivation={motivation}
           neuralNudgeData={neuralNudgeData}
         />
-
-        {/* Unified Test Dashboard */}
-        <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl">
-          <button
-            onClick={() => setShowTestDashboard(true)}
-            className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            🧪 Test Suite Dashboard
-          </button>
-          <p className="text-xs text-indigo-600 mt-2 text-center">
-            Neural nudge • Phase 1 stability • Phase 2 testing infrastructure
-          </p>
-        </div>
 
         {!isOnline && (
           <div className="mb-8 p-5 bg-amber-50 border border-amber-100 rounded-3xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
