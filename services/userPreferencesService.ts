@@ -3,6 +3,10 @@
  * Manages user settings including haptic feedback preferences
  */
 
+import { safeJsonParse } from '../utils/safeJson';
+import { storageQuota } from '../utils/storageQuota';
+import { logger } from '../utils/logger';
+
 export interface UserPreferences {
   hapticFeedback: {
     enabled: boolean;
@@ -55,11 +59,11 @@ class UserPreferencesService {
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed = safeJsonParse<Partial<UserPreferences>>(stored, {});
         return { ...DEFAULT_PREFERENCES, ...parsed };
       }
     } catch (error) {
-      console.warn('Failed to load user preferences:', error);
+      logger.warn('[UserPreferences] Failed to load user preferences:', error);
     }
     return DEFAULT_PREFERENCES;
   }
@@ -68,7 +72,7 @@ class UserPreferencesService {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.preferences));
     } catch (error) {
-      console.warn('Failed to save user preferences:', error);
+      logger.warn('[UserPreferences] Failed to save user preferences:', error);
     }
   }
 

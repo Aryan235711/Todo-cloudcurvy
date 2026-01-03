@@ -1,12 +1,24 @@
 // Enhanced Behavioral Storage Service
 import { LEARNING_CONSTANTS } from '../config/behavioralConstants';
+import { safeJsonParse } from '../utils/safeJson';
+import { logger } from '../utils/logger';
+import { debounce } from '../utils/debounce';
+import { storageQuota } from '../utils/storageQuota';
+import { STORAGE_KEYS, STORAGE_LIMITS, SYNC_CONFIG } from '../constants/storageConstants';
+
+interface UserOutcome {
+  completed: boolean;
+  engaged: boolean;
+  ignored: boolean;
+  frustrated: boolean;
+}
 
 interface StoredUserModel {
   messageEffectiveness: Record<string, number>;
   interactions: Array<{
     timestamp: number;
     messageType: string;
-    outcome: any;
+    outcome: UserOutcome;
     signal: number;
     context?: string;
   }>;
@@ -25,29 +37,88 @@ interface StoredUserModel {
 }
 
 export class BehavioralStorageService {
-  private storageKey = 'loop_behavioral_models';
+  private storageKey = STORAGE_KEYS.BEHAVIORAL_MODELS;
+  private pendingWrites = new Map<string, StoredUserModel>();
   
-  saveUserModel(userId: string, model: StoredUserModel): void {
+  // Debounced write to prevent race conditions from rapid updates
+  private debouncedWrite = debounce(() => {
+    this.flushPendingWrites();
+  }, SYNC_CONFIG.DEBOUNCE_DELAY);
+
+  private flushPendingWrites(): void {
+    if (this.pendingWrites.size === 0) return;
+
     try {
       const allModels = this.loadAllModels();
-      allModels[userId] = {
-        ...model,
-        modelMetrics: {
-          ...model.modelMetrics,
-          lastUpdated: Date.now()
+      
+      // Apply all pending writes
+      this.pendingWrites.forEach((model, userId) => {
+        allModels[userId] = {
+          ...model,
+          modelMetrics: {
+            ...model.modelMetrics,
+            lastUpdated: Date.now()
+          }
+        };
+      });
+
+      // Single write operation
+      const success = storageQuota.safeWrite(
+        this.storageKey,
+        JSON.stringify(allModels),
+        localStorage,
+        () => {
+          logger.warn('[BehavioralStorage] Quota exceeded, trimming old data');
+          this.trimOldModels(allModels);
         }
-      };
-      
-      // Compress by removing old interactions
-      if (allModels[userId].interactions.length > LEARNING_CONSTANTS.MEMORY_LIMITS.INTERACTIONS_PER_USER) {
-        allModels[userId].interactions = allModels[userId].interactions
-          .slice(-LEARNING_CONSTANTS.MEMORY_LIMITS.INTERACTIONS_PER_USER);
+      );
+
+      if (success) {
+        this.pendingWrites.clear();
+        logger.log('[BehavioralStorage] Flushed', this.pendingWrites.size, 'pending writes');
+      } else {
+        logger.error('[BehavioralStorage] Failed to flush pending writes');
       }
-      
-      localStorage.setItem(this.storageKey, JSON.stringify(allModels));
     } catch (error) {
-      console.warn('[BehavioralStorage] Save failed:', error);
+      logger.error('[BehavioralStorage] Error flushing writes:', error);
     }
+  }
+
+  private trimOldModels(allModels: Record<string, StoredUserModel>): void {
+    // Keep only models updated in last 90 days
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const trimmed: Record<string, StoredUserModel> = {};
+
+    Object.entries(allModels).forEach(([userId, model]) => {
+      if (model.modelMetrics.lastUpdated > cutoff) {
+        trimmed[userId] = model;
+      }
+    });
+
+    storageQuota.safeWrite(this.storageKey, JSON.stringify(trimmed));
+  }
+
+  /**
+   * Flush pending writes immediately (useful before page unload)
+   */
+  flush(): void {
+    this.debouncedWrite.flush();
+  }
+
+  saveUserModel(userId: string, model: StoredUserModel): void {
+    // Queue the write instead of writing immediately (prevents race conditions)
+    const compressed = {
+      ...model,
+      // Compress by removing old interactions
+      interactions: model.interactions.length > LEARNING_CONSTANTS.MEMORY_LIMITS.INTERACTIONS_PER_USER
+        ? model.interactions.slice(-LEARNING_CONSTANTS.MEMORY_LIMITS.INTERACTIONS_PER_USER)
+        : model.interactions
+    };
+    
+    this.pendingWrites.set(userId, compressed);
+    
+    // Trigger debounced flush (writes after 500ms of inactivity)
+    this.debouncedWrite();
   }
   
   loadUserModel(userId: string): StoredUserModel | null {
@@ -59,7 +130,7 @@ export class BehavioralStorageService {
       
       // Validate model structure
       if (!this.validateModel(model)) {
-        console.warn('[BehavioralStorage] Invalid model structure, resetting');
+        logger.warn('[BehavioralStorage] Invalid model structure, resetting');
         return null;
       }
       
@@ -69,7 +140,7 @@ export class BehavioralStorageService {
       
       return model;
     } catch (error) {
-      console.warn('[BehavioralStorage] Load failed:', error);
+      logger.warn('[BehavioralStorage] Load failed:', error);
       return null;
     }
   }
@@ -77,18 +148,24 @@ export class BehavioralStorageService {
   private loadAllModels(): Record<string, StoredUserModel> {
     try {
       const stored = localStorage.getItem(this.storageKey);
-      return stored ? JSON.parse(stored) : {};
+      if (!stored) return {};
+      return safeJsonParse<Record<string, StoredUserModel>>(stored, {});
     } catch {
       return {};
     }
   }
   
-  private validateModel(model: any): boolean {
-    return model &&
-           typeof model.messageEffectiveness === 'object' &&
-           Array.isArray(model.interactions) &&
-           typeof model.personalizedThresholds === 'object' &&
-           typeof model.modelMetrics === 'object';
+  private validateModel(model: unknown): model is StoredUserModel {
+    return model !== null &&
+           typeof model === 'object' &&
+           'messageEffectiveness' in model &&
+           typeof (model as StoredUserModel).messageEffectiveness === 'object' &&
+           'interactions' in model &&
+           Array.isArray((model as StoredUserModel).interactions) &&
+           'personalizedThresholds' in model &&
+           typeof (model as StoredUserModel).personalizedThresholds === 'object' &&
+           'modelMetrics' in model &&
+           typeof (model as StoredUserModel).modelMetrics === 'object';
   }
   
   getStorageStats(): { totalUsers: number; totalInteractions: number; storageSize: number } {

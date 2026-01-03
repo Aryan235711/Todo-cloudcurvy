@@ -3,6 +3,11 @@
  * Logs errors locally without sending data to external services
  */
 
+import { safeJsonParse } from '../utils/safeJson';
+import { storageQuota } from '../utils/storageQuota';
+import { logger } from '../utils/logger';
+import { STORAGE_KEYS, STORAGE_LIMITS } from '../constants/storageConstants';
+
 interface CrashReport {
   id: string;
   timestamp: number;
@@ -14,8 +19,8 @@ interface CrashReport {
 }
 
 class CrashReportingService {
-  private readonly STORAGE_KEY = 'curvycloud_crash_reports';
-  private readonly MAX_REPORTS = 50;
+  private readonly STORAGE_KEY = STORAGE_KEYS.CRASH_REPORTS;
+  private readonly MAX_REPORTS = STORAGE_LIMITS.MAX_CRASH_REPORTS;
 
   init() {
     // Global error handler
@@ -74,28 +79,38 @@ class CrashReportingService {
       url: details.url
     };
 
-    try {
-      const reports = this.getReports();
-      reports.unshift(report);
-      
-      // Keep only recent reports
-      const trimmedReports = reports.slice(0, this.MAX_REPORTS);
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(trimmedReports));
-      
-      // Log to console in development
-      if (import.meta.env.DEV) {
-        console.error('Crash Report:', report);
+    const reports = this.getReports();
+    reports.unshift(report);
+    
+    // Keep only recent reports
+    const trimmedReports = reports.slice(0, this.MAX_REPORTS);
+    
+    const success = storageQuota.safeWrite(
+      this.STORAGE_KEY,
+      JSON.stringify(trimmedReports),
+      localStorage,
+      () => {
+        // On quota exceeded, keep only 20 most recent
+        logger.warn('[CrashReporting] Quota exceeded, trimming to 20 reports');
+        const minimal = reports.slice(0, 20);
+        storageQuota.safeWrite(this.STORAGE_KEY, JSON.stringify(minimal));
       }
-    } catch (e) {
-      // Fail silently if localStorage is full
-      console.warn('Failed to save crash report:', e);
+    );
+
+    if (!success) {
+      logger.error('[CrashReporting] Failed to save crash report');
+    }
+    
+    // Log to console in development
+    if (import.meta.env.DEV) {
+      console.error('Crash Report:', report);
     }
   }
 
   getReports(): CrashReport[] {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      return safeJsonParse<CrashReport[]>(stored, []);
     } catch {
       return [];
     }

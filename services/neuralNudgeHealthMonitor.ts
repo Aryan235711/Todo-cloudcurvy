@@ -49,12 +49,25 @@ interface SystemHealth {
   activeExperiments: number;
 }
 
+type MetricValue = number | number[];
+
 class NeuralNudgeHealthMonitor {
-  private metrics: Map<string, any> = new Map();
+  private metrics: Map<string, MetricValue> = new Map();
   private healthHistory: Array<{ timestamp: number; score: HealthScore }> = [];
   
   constructor() {
     this.initializeMetrics();
+  }
+
+  // Helper methods for type-safe metric access
+  private getNumberMetric(key: string): number {
+    const value = this.metrics.get(key);
+    return typeof value === 'number' ? value : 0;
+  }
+
+  private getArrayMetric(key: string): number[] {
+    const value = this.metrics.get(key);
+    return Array.isArray(value) ? value : [];
   }
 
   private initializeMetrics() {
@@ -100,9 +113,9 @@ class NeuralNudgeHealthMonitor {
   }
 
   private async calculateEffectiveness(): Promise<number> {
-    const nudgesSent = this.metrics.get('nudges_sent_24h') || 0;
-    const taskCompletions = this.metrics.get('task_completions_24h') || 0;
-    const userEngagements = this.metrics.get('user_engagements_24h') || 0;
+    const nudgesSent = this.getNumberMetric('nudges_sent_24h');
+    const taskCompletions = this.getNumberMetric('task_completions_24h');
+    const userEngagements = this.getNumberMetric('user_engagements_24h');
     
     if (nudgesSent === 0) return 0.5; // Neutral score if no data
     
@@ -124,10 +137,10 @@ class NeuralNudgeHealthMonitor {
   }
 
   private async calculateReliability(): Promise<number> {
-    const nudgesSent = this.metrics.get('nudges_sent_24h') || 0;
-    const nudgesSuccessful = this.metrics.get('nudges_successful_24h') || 0;
-    const errorCount = this.metrics.get('error_count_24h') || 0;
-    const rateLimitHits = this.metrics.get('rate_limit_hits_24h') || 0;
+    const nudgesSent = this.getNumberMetric('nudges_sent_24h');
+    const nudgesSuccessful = this.getNumberMetric('nudges_successful_24h');
+    const errorCount = this.getNumberMetric('error_count_24h');
+    const rateLimitHits = this.getNumberMetric('rate_limit_hits_24h');
     
     if (nudgesSent === 0) return 1; // Perfect if no attempts
     
@@ -169,9 +182,9 @@ class NeuralNudgeHealthMonitor {
 
   private async calculateSystemHealth(): Promise<number> {
     const rateLimitStatus = rateLimitService.getRateLimitStatus();
-    const responseTimes = this.metrics.get('response_times') || [];
-    const errorRate = this.metrics.get('error_count_24h') || 0;
-    const nudgesSent = this.metrics.get('nudges_sent_24h') || 1;
+    const responseTimes = this.getArrayMetric('response_times');
+    const errorRate = this.getNumberMetric('error_count_24h');
+    const nudgesSent = this.getNumberMetric('nudges_sent_24h') || 1;
     
     // Rate limiting health (0-1)
     const rateLimitHealth = rateLimitStatus.notificationsInWindow / rateLimitStatus.maxNotifications;
@@ -210,14 +223,14 @@ class NeuralNudgeHealthMonitor {
   }
 
   private calculateNudgeFrequency(): number {
-    const nudgesSent = this.metrics.get('nudges_sent_24h') || 0;
+    const nudgesSent = this.getNumberMetric('nudges_sent_24h');
     const hoursInDay = 24;
     return nudgesSent / hoursInDay; // Nudges per hour
   }
 
   private calculateContextualRelevance(): number {
-    const userEngagements = this.metrics.get('user_engagements_24h') || 0;
-    const nudgesSent = this.metrics.get('nudges_sent_24h') || 1;
+    const userEngagements = this.getNumberMetric('user_engagements_24h');
+    const nudgesSent = this.getNumberMetric('nudges_sent_24h') || 1;
     return userEngagements / nudgesSent;
   }
 
@@ -238,9 +251,9 @@ class NeuralNudgeHealthMonitor {
   // System Health Details
   getSystemHealthDetails(): SystemHealth {
     const rateLimitStatus = rateLimitService.getRateLimitStatus();
-    const responseTimes = this.metrics.get('response_times') || [];
-    const errorCount = this.metrics.get('error_count_24h') || 0;
-    const nudgesSent = this.metrics.get('nudges_sent_24h') || 1;
+    const responseTimes = this.getArrayMetric('response_times');
+    const errorCount = this.getNumberMetric('error_count_24h');
+    const nudgesSent = this.getNumberMetric('nudges_sent_24h') || 1;
     const activeExperiments = getActiveExperiments();
     
     const avgResponseTime = responseTimes.length > 0 
@@ -273,16 +286,16 @@ class NeuralNudgeHealthMonitor {
 
   // Metric Recording
   recordNudgeSent(success: boolean, responseTime?: number) {
-    this.metrics.set('nudges_sent_24h', (this.metrics.get('nudges_sent_24h') || 0) + 1);
+    this.metrics.set('nudges_sent_24h', this.getNumberMetric('nudges_sent_24h') + 1);
     
     if (success) {
-      this.metrics.set('nudges_successful_24h', (this.metrics.get('nudges_successful_24h') || 0) + 1);
+      this.metrics.set('nudges_successful_24h', this.getNumberMetric('nudges_successful_24h') + 1);
     } else {
-      this.metrics.set('error_count_24h', (this.metrics.get('error_count_24h') || 0) + 1);
+      this.metrics.set('error_count_24h', this.getNumberMetric('error_count_24h') + 1);
     }
     
     if (responseTime) {
-      const responseTimes = this.metrics.get('response_times') || [];
+      const responseTimes = this.getArrayMetric('response_times');
       responseTimes.push(responseTime);
       // Keep only last 100 response times
       if (responseTimes.length > 100) {
@@ -293,15 +306,15 @@ class NeuralNudgeHealthMonitor {
   }
 
   recordUserEngagement() {
-    this.metrics.set('user_engagements_24h', (this.metrics.get('user_engagements_24h') || 0) + 1);
+    this.metrics.set('user_engagements_24h', this.getNumberMetric('user_engagements_24h') + 1);
   }
 
   recordTaskCompletion() {
-    this.metrics.set('task_completions_24h', (this.metrics.get('task_completions_24h') || 0) + 1);
+    this.metrics.set('task_completions_24h', this.getNumberMetric('task_completions_24h') + 1);
   }
 
   recordRateLimitHit() {
-    this.metrics.set('rate_limit_hits_24h', (this.metrics.get('rate_limit_hits_24h') || 0) + 1);
+    this.metrics.set('rate_limit_hits_24h', this.getNumberMetric('rate_limit_hits_24h') + 1);
   }
 
   // Health Trends

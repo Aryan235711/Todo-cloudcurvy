@@ -41,6 +41,7 @@ export const TodoInput: React.FC<TodoInputProps> = ({
           <button
             type="button"
             onClick={toggleVoice}
+            aria-label={isListening ? "Stop voice input" : "Start voice input"}
             aria-disabled={!canVoice}
             className={`p-4 rounded-2xl transition-all curvy-btn shadow-md shrink-0 ${
               !canVoice
@@ -70,6 +71,7 @@ export const TodoInput: React.FC<TodoInputProps> = ({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder={showStaticPlaceholder ? "Manifest a template…" : ""}
+              aria-label="Task or template input"
               className="w-full bg-transparent text-lg sm:text-2xl font-bold placeholder-slate-200 focus:outline-none tracking-tight"
             />
           </div>
@@ -84,6 +86,7 @@ export const TodoInput: React.FC<TodoInputProps> = ({
                 }
               }}
               disabled={!inputValue.trim() || isMagicLoading}
+              aria-label="Generate AI template"
               className={`p-4 rounded-2xl transition-all shadow-md active:scale-95 curvy-btn ${
                 isMagicLoading ? 'bg-slate-200 text-slate-400' : 'bg-indigo-500 text-white'
               }`}
@@ -93,6 +96,7 @@ export const TodoInput: React.FC<TodoInputProps> = ({
             <button
               type="submit"
               disabled={!inputValue.trim()}
+              aria-label="Add task"
               className="bg-sky-500 text-white p-4 rounded-2xl hover:bg-sky-600 transition-all shadow-md active:scale-95 curvy-btn"
             >
               <Plus size={22} strokeWidth={4} />

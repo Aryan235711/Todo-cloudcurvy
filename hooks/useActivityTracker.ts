@@ -2,6 +2,7 @@
 import { useEffect, useCallback } from 'react';
 import { activityLogger } from '../services/activityLogger';
 import { stateValidator } from '../services/stateValidationLogger';
+import { safeJsonParse } from '../utils/safeJson';
 
 export const useActivityTracker = () => {
   useEffect(() => {
@@ -29,7 +30,7 @@ export const useActivityTracker = () => {
 
       // Capture pre-interaction state
       const preState = {
-        todos: JSON.parse(localStorage.getItem('todos') || '[]'),
+        todos: safeJsonParse(localStorage.getItem('todos'), []),
         storageUsage: localStorage.length,
         timestamp: Date.now()
       };
@@ -56,7 +57,7 @@ export const useActivityTracker = () => {
       // Validate state change after a delay
       setTimeout(() => {
         const postState = {
-          todos: JSON.parse(localStorage.getItem('todos') || '[]'),
+          todos: safeJsonParse(localStorage.getItem('todos'), []),
           storageUsage: localStorage.length,
           timestamp: Date.now()
         };
@@ -84,8 +85,8 @@ export const useActivityTracker = () => {
       const formData = new FormData(form);
       
       const preState = {
-        todos: JSON.parse(localStorage.getItem('todos') || '[]'),
-        templates: JSON.parse(localStorage.getItem('templates') || '[]')
+        todos: safeJsonParse(localStorage.getItem('todos'), []),
+        templates: safeJsonParse(localStorage.getItem('templates'), [])
       };
 
       const interactionId = stateValidator.logUIInteraction(
@@ -104,8 +105,8 @@ export const useActivityTracker = () => {
 
       setTimeout(() => {
         const postState = {
-          todos: JSON.parse(localStorage.getItem('todos') || '[]'),
-          templates: JSON.parse(localStorage.getItem('templates') || '[]')
+          todos: safeJsonParse(localStorage.getItem('todos'), []),
+          templates: safeJsonParse(localStorage.getItem('templates'), [])
         };
         stateValidator.validateInteraction(interactionId, postState);
       }, 500);
@@ -147,8 +148,8 @@ export const useActivityTracker = () => {
     // State snapshot every 30 seconds
     const stateSnapshotInterval = setInterval(() => {
       const currentState = {
-        todos: JSON.parse(localStorage.getItem('todos') || '[]'),
-        templates: JSON.parse(localStorage.getItem('templates') || '[]'),
+        todos: safeJsonParse(localStorage.getItem('todos'), []),
+        templates: safeJsonParse(localStorage.getItem('templates'), []),
         storageUsage: localStorage.length,
         memoryUsage: (performance as any).memory?.usedJSHeapSize || 0,
         timestamp: Date.now()
@@ -182,15 +183,15 @@ export const useActivityTracker = () => {
   }, []);
 
   // Manual logging functions
-  const logActivity = useCallback((category: any, action: string, details: any, context?: string) => {
+  const logActivity = useCallback((category: 'system' | 'user_action' | 'neural_nudge' | 'ai_generation' | 'notification' | 'data_change', action: string, details: Record<string, unknown>, context?: string) => {
     activityLogger.log(category, action, details, context);
   }, []);
 
-  const logUIInteraction = useCallback((element: string, action: string, expectedOutcome: string, preState: any) => {
+  const logUIInteraction = useCallback((element: string, action: string, expectedOutcome: string, preState: Record<string, unknown>) => {
     return stateValidator.logUIInteraction(element, action, expectedOutcome, preState);
   }, []);
 
-  const validateInteraction = useCallback((interactionId: string, actualState: any) => {
+  const validateInteraction = useCallback((interactionId: string, actualState: Record<string, unknown>) => {
     return stateValidator.validateInteraction(interactionId, actualState);
   }, []);
 

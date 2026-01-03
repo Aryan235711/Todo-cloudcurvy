@@ -1,9 +1,11 @@
 // Phase 5.2: Backup/Restore Service
 import { dataMigrationService } from './dataMigrationService';
+import { safeJsonParse } from '../utils/safeJson';
+import { Todo, Template } from '../types';
 
-export interface BackupData {
-  todos: any[];
-  templates: any[];
+interface BackupData {
+  todos: Todo[];
+  templates: Template[];
   version: number;
   timestamp: number;
   appVersion: string;
@@ -19,8 +21,8 @@ export interface RestoreResult {
 class BackupService {
   exportData(): string {
     try {
-      const todos = JSON.parse(localStorage.getItem('curvycloud_todos') || '[]');
-      const templates = JSON.parse(localStorage.getItem('curvycloud_templates') || '[]');
+      const todos = safeJsonParse(localStorage.getItem('curvycloud_todos'), []);
+      const templates = safeJsonParse(localStorage.getItem('curvycloud_templates'), []);
       
       const backupData: BackupData = {
         todos,

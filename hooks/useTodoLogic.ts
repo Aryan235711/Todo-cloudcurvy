@@ -9,6 +9,7 @@ import { taskCategorizationService } from '../services/taskCategorizationService
 import { offlineStorageService } from '../services/offlineStorageService';
 import { useNetworkStatus } from './useNetworkStatus';
 import { useTodoStore } from '../stores/todoStore';
+import { logger } from '../utils/logger';
 
 export const useTodoLogic = () => {
   const { isOnline } = useNetworkStatus();
@@ -89,10 +90,13 @@ export const useTodoLogic = () => {
 
       // Local dev fallback: when running via Vite, `vite.config.ts` injects
       // `process.env.API_KEY`/`process.env.GEMINI_API_KEY` from `.env.local`.
-      const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
-      if (envKey) {
-        setHasApiKey(true);
-        return;
+      // Only check in development to prevent key exposure in production bundles
+      if (import.meta.env.DEV) {
+        const envKey = (import.meta.env.VITE_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+        if (envKey) {
+          setHasApiKey(true);
+          return;
+        }
       }
 
       // AI Studio (if present) is last.
@@ -108,6 +112,10 @@ export const useTodoLogic = () => {
   }, []);
 
   // Neural Nudge Logic - Enhanced with behavioral intelligence
+  const updateTodoStable = useCallback((id: string, updates: Partial<Todo>) => {
+    updateTodo(id, updates);
+  }, [updateTodo]);
+
   useEffect(() => {
     const nudgeInterval = setInterval(async () => {
       const pending = todos.filter(t => !t.completed);
@@ -140,16 +148,16 @@ export const useTodoLogic = () => {
             setTimeout(() => setNotificationHint(null), 8000);
           }
           
-          updateTodo(staleHigh.id, { lastNotified: Date.now() });
+          updateTodoStable(staleHigh.id, { lastNotified: Date.now() });
         } catch (error) {
-          console.error('Neural nudge failed:', error);
+          logger.error('Neural nudge failed:', error);
           setNotificationHint('Failed to send smart nudge.');
           setTimeout(() => setNotificationHint(null), 8000);
         }
       }
     }, 60000); 
     return () => clearInterval(nudgeInterval);
-  }, [todos]);
+  }, [todos, updateTodoStable]);
 
   // Storage Persistence with Offline Support
   useEffect(() => {
@@ -163,8 +171,10 @@ export const useTodoLogic = () => {
   useEffect(() => {
     if (isInitialLoad) return;
 
+    // Clear any existing timer before setting a new one
     if (persistTimerRef.current !== null) {
       window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
     }
 
     // Debounce persistence with offline support
@@ -213,11 +223,12 @@ export const useTodoLogic = () => {
   // Voice recognition init (native plugin on mobile, Web Speech on browser)
   useEffect(() => {
     let cancelled = false;
+    let pendingRecognition: any = null;
 
     void (async () => {
       const mode = await getVoiceMode();
       if (cancelled) return;
-      console.log('🎤 Voice mode detected:', mode);
+      logger.feature('voice', 'Voice mode detected:', mode);
       setVoiceMode(mode);
 
       if (mode !== 'web') return;
@@ -228,6 +239,13 @@ export const useTodoLogic = () => {
       recognition.interimResults = false;
       recognition.continuous = false;
       recognition.lang = 'en-US';
+      
+      if (cancelled) {
+        // Component unmounted before setup completed
+        return;
+      }
+      
+      pendingRecognition = recognition;
       recognitionRef.current = recognition;
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
@@ -246,9 +264,12 @@ export const useTodoLogic = () => {
     return () => {
       cancelled = true;
       try {
+        if (pendingRecognition) {
+          pendingRecognition.stop?.();
+        }
         recognitionRef.current?.stop?.();
       } catch {
-        // ignore
+        // ignore cleanup errors
       }
       recognitionRef.current = null;
     };

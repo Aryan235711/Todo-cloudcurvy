@@ -13,6 +13,16 @@ import { userPreferencesService } from './userPreferencesService';
 import { securityService } from './securityService';
 import { enhancedLearning } from './enhancedLearningEngine';
 import { LEARNING_CONSTANTS } from '../config/behavioralConstants';
+import { logger } from '../utils/logger';
+import { messageGenerationService, MessageContext } from './messageGenerationService';
+import { 
+  TIME_CONSTANTS, 
+  PROCRASTINATION_THRESHOLDS, 
+  NOTIFICATION_LIMITS,
+  AB_TEST_VARIANTS,
+  PROCRASTINATION_FACTORS,
+  MESSAGE_PROBABILITIES
+} from '../config/notificationConstants';
 
 // Enhanced Intelligent Feedback Engine (replaced with persistent learning)
 const intelligentFeedback = enhancedLearning;
@@ -20,7 +30,7 @@ const intelligentFeedback = enhancedLearning;
 const analytics = {
   track: (event: string, data: Record<string, unknown>) => {
     const sanitizedData = securityService.sanitizeAnalyticsData(data);
-    console.log(`[Analytics] ${securityService.sanitizeForLogging(event)}`, sanitizedData);
+    logger.log(`[Analytics] ${securityService.sanitizeForLogging(event)}`, sanitizedData);
   }
 };
 
@@ -79,6 +89,8 @@ class SmartScheduler {
       { start: 14, end: 16, score: 0.7 }
     ]
   };
+  private productivityUpdateTimer: NodeJS.Timeout | number | null = null;
+  private isUpdatingProductivity = false;
 
   updateActivity() {
     this.pattern.lastActivity = Date.now();
@@ -102,8 +114,8 @@ class SmartScheduler {
       this.pattern.completionHistory = this.pattern.completionHistory.slice(-50);
     }
     
-    // Update productivity windows based on completion patterns
-    this.updateProductivityWindows();
+    // Debounced update to prevent race conditions
+    this.updateProductivityWindowsDebounced();
     
     if (daysSinceLastCompletion <= 1.5) {
       this.pattern.completionStreak++;
@@ -122,17 +134,23 @@ class SmartScheduler {
   }
 
   getOptimalDelay(): number {
-    if (this.isQuietTime()) return 8 * 60 * 60 * 1000; // 8 hours
+    if (this.isQuietTime()) return TIME_CONSTANTS.QUIET_TIME_DELAY;
     
     const timeSinceActivity = Date.now() - this.pattern.lastActivity;
-    let baseDelay = 5 * 60 * 1000; // 5 minutes
+    let baseDelay = TIME_CONSTANTS.BASE_DELAY;
     
     // A/B Test: Notification Frequency
     const frequencyVariant = abTestService.getVariant('notification_frequency');
+    const validFrequencyVariants = ['high_frequency', 'low_frequency', 'adaptive'];
+    
+    if (frequencyVariant && !validFrequencyVariants.includes(frequencyVariant)) {
+      logger.warn('[SmartScheduler] Invalid frequency variant:', frequencyVariant);
+    }
+    
     if (frequencyVariant === 'high_frequency') {
-      baseDelay = 3 * 60 * 1000; // 3 minutes for high frequency
+      baseDelay = TIME_CONSTANTS.HIGH_FREQUENCY_DELAY;
     } else if (frequencyVariant === 'low_frequency') {
-      baseDelay = 10 * 60 * 1000; // 10 minutes for low frequency
+      baseDelay = TIME_CONSTANTS.LOW_FREQUENCY_DELAY;
     }
     
     // Use predictive insights to adjust delay
@@ -142,85 +160,75 @@ class SmartScheduler {
       const hoursUntilOptimal = prediction.optimalHour - currentHour;
       
       if (hoursUntilOptimal > 0 && hoursUntilOptimal <= 4) {
-        return Math.min(hoursUntilOptimal * 60 * 60 * 1000, 4 * 60 * 60 * 1000);
+        return Math.min(hoursUntilOptimal * TIME_CONSTANTS.HOUR, TIME_CONSTANTS.MAX_PREDICTIVE_DELAY);
       }
     }
     
-    if (timeSinceActivity < 2 * 60 * 1000) return baseDelay * 3; // Recently active, wait longer
-    if (timeSinceActivity > 30 * 60 * 1000) return baseDelay; // Been away, notify sooner
+    if (timeSinceActivity < TIME_CONSTANTS.RECENT_ACTIVITY_THRESHOLD) return baseDelay * PROCRASTINATION_FACTORS.RECENT_ACTIVITY_MULTIPLIER;
+    if (timeSinceActivity > TIME_CONSTANTS.AWAY_THRESHOLD) return baseDelay;
     
-    return baseDelay * 2;
+    return baseDelay * PROCRASTINATION_FACTORS.DEFAULT_MULTIPLIER;
   }
 
   generateContextualMessage(context: NotificationContext): { title: string; body: string } {
     const hour = new Date().getHours();
     const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
-    const isHighEngagement = this.pattern.engagementScore > 0.7;
-    const hasStreak = this.pattern.completionStreak > 2;
 
-    // Use motivation engine for enhanced messaging
-    const motivationContext: MotivationContext = {
+    const messageContext: MessageContext = {
       streak: this.pattern.completionStreak,
       engagement: this.pattern.engagementScore,
       timeOfDay: timeOfDay as 'morning' | 'afternoon' | 'evening' | 'night',
       priority: context.priority || 'medium'
     };
 
-    // 70% chance to use motivational message, 30% contextual
-    if (Math.random() > 0.3) {
-      return this.generateMotivationalMessage(motivationContext);
+    // 70% chance to use motivational message (delegated to service)
+    const preferMotivational = Math.random() > 0.3;
+    return messageGenerationService.generateMessage(messageContext, preferMotivational);
+  }
+
+  private updateProductivityWindowsDebounced() {
+    // Clear previous timer
+    if (this.productivityUpdateTimer !== null) {
+      clearTimeout(this.productivityUpdateTimer as number);
     }
-
-    const messages = {
-      high: {
-        morning: isHighEngagement ? ['🔥 Ready to crush it?', 'Your high-priority task awaits'] : ['⚡ Important task ahead', 'Time to tackle the big one'],
-        afternoon: hasStreak ? ['🎯 Keep the momentum!', 'Another high-priority win?'] : ['🚀 Power through this one', 'High-impact task ready'],
-        evening: ['🌟 Finish strong today', 'One important task left'],
-        night: ['🌙 Quick win before rest?', 'Wrap up this priority task']
-      },
-      medium: {
-        morning: ['☀️ Good morning!', 'Ready for a productive task?'],
-        afternoon: isHighEngagement ? ['⚡ You\'re on fire!', 'Another task to conquer'] : ['📋 Task reminder', 'Time for the next one'],
-        evening: ['🌅 Evening progress', 'One more task to go'],
-        night: ['✨ Late night productivity?', 'Quick task before bed']
-      },
-      low: {
-        morning: ['🌱 Small step forward', 'Easy win to start the day'],
-        afternoon: ['📝 Quick task break?', 'Simple one to check off'],
-        evening: ['🎈 Light task ahead', 'Easy evening progress'],
-        night: ['💤 Simple task?', 'Quick one before sleep']
-      }
-    };
-
-    const priority = context.priority || 'medium';
-    const timeMessages = messages[priority][timeOfDay] || messages.medium.afternoon;
-    const [title, body] = timeMessages;
-
-    return { title, body };
+    
+    // Debounce updates by 2 seconds to prevent race conditions
+    this.productivityUpdateTimer = setTimeout(() => {
+      this.updateProductivityWindows();
+      this.productivityUpdateTimer = null;
+    }, 2000);
   }
 
   private updateProductivityWindows() {
-    if (this.pattern.completionHistory.length < 5) return;
+    // Prevent concurrent updates
+    if (this.isUpdatingProductivity) return;
+    this.isUpdatingProductivity = true;
     
-    const hourCounts = new Map<number, number>();
-    
-    // Count completions by hour
-    this.pattern.completionHistory.forEach(completion => {
-      const count = hourCounts.get(completion.hour) || 0;
-      hourCounts.set(completion.hour, count + 1);
-    });
-    
-    // Find top productivity hours
-    const sortedHours = Array.from(hourCounts.entries())
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 3);
-    
-    // Update productivity windows
-    this.pattern.productivityWindows = sortedHours.map(([hour, count]) => ({
-      start: hour,
-      end: hour + 1,
-      score: Math.min(1, count / this.pattern.completionHistory.length * 5)
-    }));
+    try {
+      if (this.pattern.completionHistory.length < 5) return;
+      
+      const hourCounts = new Map<number, number>();
+      
+      // Count completions by hour
+      this.pattern.completionHistory.forEach(completion => {
+        const count = hourCounts.get(completion.hour) || 0;
+        hourCounts.set(completion.hour, count + 1);
+      });
+      
+      // Find top productivity hours
+      const sortedHours = Array.from(hourCounts.entries())
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3);
+      
+      // Update productivity windows atomically
+      this.pattern.productivityWindows = sortedHours.map(([hour, count]) => ({
+        start: hour,
+        end: hour + 1,
+        score: Math.min(1, count / this.pattern.completionHistory.length * 5)
+      }));
+    } finally {
+      this.isUpdatingProductivity = false;
+    }
   }
 
   getPredictiveInsight(): PredictiveInsight {
@@ -229,36 +237,82 @@ class SmartScheduler {
     }
     
     const currentHour = new Date().getHours();
-    const recentCompletions = this.pattern.completionHistory.slice(-10);
+    const currentDay = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+    const isWeekend = currentDay === 0 || currentDay === 6;
     
-    // Find most common completion hour in recent history
+    // Filter completions by weekday/weekend
+    const relevantCompletions = this.pattern.completionHistory.filter(completion => {
+      const completionDate = new Date(completion.time);
+      const completionDay = completionDate.getDay();
+      const wasWeekend = completionDay === 0 || completionDay === 6;
+      return wasWeekend === isWeekend;
+    });
+    
+    // Fall back to all completions if not enough data for current day type
+    const recentCompletions = relevantCompletions.length >= 5 
+      ? relevantCompletions.slice(-10) 
+      : this.pattern.completionHistory.slice(-10);
+    
+    if (recentCompletions.length === 0) {
+      return { optimalHour: currentHour + 1, confidence: 0.4, reason: 'No pattern data available' };
+    }
+    
+    // Calculate hour frequency
     const hourFrequency = new Map<number, number>();
     recentCompletions.forEach(completion => {
       const count = hourFrequency.get(completion.hour) || 0;
       hourFrequency.set(completion.hour, count + 1);
     });
     
-    const mostCommonHour = Array.from(hourFrequency.entries())
-      .sort(([,a], [,b]) => b - a)[0];
+    // Find most common hour
+    const sortedHours = Array.from(hourFrequency.entries())
+      .sort(([,a], [,b]) => b - a);
     
-    if (!mostCommonHour) {
+    if (sortedHours.length === 0) {
       return { optimalHour: currentHour + 1, confidence: 0.4, reason: 'No clear pattern' };
     }
     
-    const [hour, frequency] = mostCommonHour;
-    const confidence = Math.min(0.9, frequency / recentCompletions.length);
+    const [mostCommonHour, frequency] = sortedHours[0];
+    
+    // Calculate statistical significance
+    const sampleSize = recentCompletions.length;
+    const expectedFrequency = sampleSize / 24; // Random distribution
+    const observedFrequency = frequency;
+    
+    // Simple chi-square-like metric for significance
+    const significance = Math.min(1, (observedFrequency - expectedFrequency) / expectedFrequency);
+    
+    // Outlier detection: remove hours with only 1 occurrence if we have enough data
+    let filteredHour = mostCommonHour;
+    if (sampleSize >= 10 && frequency === 1 && sortedHours.length > 1) {
+      filteredHour = sortedHours[1][0]; // Use second most common
+      logger.log('[Predictive] Filtered outlier hour, using second most common');
+    }
+    
+    // Confidence based on frequency, sample size, and significance
+    const frequencyConfidence = frequency / recentCompletions.length;
+    const sampleConfidence = Math.min(1, sampleSize / 20); // More confident with more samples
+    const significanceConfidence = Math.max(0.3, significance);
+    const weekdayBonus = relevantCompletions.length >= 5 ? 0.1 : 0; // Bonus for matching day type
+    
+    const confidence = Math.min(0.95, 
+      (frequencyConfidence * 0.5 + sampleConfidence * 0.3 + significanceConfidence * 0.2 + weekdayBonus)
+    );
+    
+    const dayType = isWeekend ? 'weekend' : 'weekday';
+    const reason = `${frequency}/${recentCompletions.length} completions at ${filteredHour}:00 (${dayType}, ${(confidence * 100).toFixed(0)}% confidence)`;
     
     return {
-      optimalHour: hour,
-      confidence,
-      reason: `${frequency}/${recentCompletions.length} recent completions at ${hour}:00`
+      optimalHour: filteredHour,
+      confidence: Math.round(confidence * 100) / 100,
+      reason
     };
   }
 
   analyzeBehavior(): BehavioralInsight {
     const now = Date.now();
     const timeSinceActivity = now - this.pattern.lastActivity;
-    const daysSinceCompletion = (now - this.pattern.lastCompletionTime) / (24 * 60 * 60 * 1000);
+    const daysSinceCompletion = (now - this.pattern.lastCompletionTime) / TIME_CONSTANTS.DAY;
     
     // Get personalized thresholds from enhanced learning
     const insights = enhancedLearning.getModelInsights();
@@ -272,7 +326,7 @@ class SmartScheduler {
     let procrastinationRisk: 'low' | 'medium' | 'high' = 'low';
     if (daysSinceCompletion > thresholds.procrastinationHigh) procrastinationRisk = 'high';
     else if (daysSinceCompletion > thresholds.procrastinationMedium || 
-             timeSinceActivity > thresholds.activityTimeout * 60 * 60 * 1000) procrastinationRisk = 'medium';
+             timeSinceActivity > thresholds.activityTimeout * TIME_CONSTANTS.HOUR) procrastinationRisk = 'medium';
     
     // Intervention timing based on engagement and risk
     let interventionTiming: 'immediate' | 'gentle' | 'delayed' = 'gentle';
@@ -303,90 +357,28 @@ class SmartScheduler {
   }
 
   generateMotivationalMessage(context: MotivationContext): { title: string; body: string } {
-    // Use enhanced learning for optimal message selection
-    const prediction = enhancedLearning.predictOptimalMessageType({
-      timeOfDay: context.timeOfDay,
-      priority: context.priority,
-      streak: context.streak,
-      engagement: context.engagement
-    });
-    
-    const messageType = prediction.confidence > 0.6 ? 
-      (prediction.prediction > 0.7 ? 'celebration' : 'motivational') : 'encouraging';
-    
-    // A/B Test: Message Tone
-    const toneVariant = abTestService.getVariant('message_tone');
-    
-    const motivationLibrary = {
-      streak: {
-        low: {
-          encouraging: [
-            ['🌟 Every step counts', 'Small progress is still progress'],
-            ['💪 Building momentum', 'You\'re creating positive habits']
-          ],
-          urgent: [
-            ['⚡ Act now!', 'Don\'t break the chain - keep going'],
-            ['🔥 Push forward', 'Momentum dies without action']
-          ],
-          neutral: [
-            ['📊 Progress update', 'Continue with current task'],
-            ['⏰ Task reminder', 'Maintain consistency']
-          ]
-        },
-        medium: {
-          encouraging: [
-            ['🔥 You\'re on a roll!', `${context.streak} tasks completed - keep going!`],
-            ['⚡ Momentum building', 'Your consistency is paying off']
-          ],
-          urgent: [
-            ['🚀 Don\'t stop now!', `${context.streak} streak - push harder!`],
-            ['💥 Accelerate!', 'Strike while the iron is hot']
-          ],
-          neutral: [
-            ['📈 Streak active', `Current: ${context.streak} completions`],
-            ['⚖️ Maintain pace', 'Steady progress continues']
-          ]
-        },
-        high: {
-          encouraging: [
-            ['🏆 Unstoppable force!', `${context.streak} task streak - you\'re crushing it!`],
-            ['👑 Productivity champion', 'Your dedication is inspiring']
-          ],
-          urgent: [
-            ['🔥 BEAST MODE!', `${context.streak} streak - DOMINATE!`],
-            ['⚡ UNSTOPPABLE!', 'Channel this power - GO!']
-          ],
-          neutral: [
-            ['📊 High performance', `${context.streak} task completion streak`],
-            ['🎯 Optimal state', 'Maintaining peak productivity']
-          ]
-        }
-      }
-    };
-
-    // Select appropriate tone and streak level
-    const streakLevel = context.streak > 5 ? 'high' : context.streak > 2 ? 'medium' : 'low';
-    const tone = toneVariant || 'encouraging';
-    
-    const messages = motivationLibrary.streak[streakLevel][tone] || motivationLibrary.streak.low.encouraging;
-    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-    const [title, body] = randomMessage;
-
-    return { title, body };
+    // Delegate to centralized message generation service
+    return messageGenerationService.generateMessage(context, true);
   }
 
   generateMotivationalNudge(context: NotificationContext, toneVariant?: string): { title: string; body: string } {
-    const motivationContext: MotivationContext = {
+    // Input validation
+    if (context && context.priority && !['low', 'medium', 'high'].includes(context.priority)) {
+      logger.warn('[SmartScheduler] Invalid priority:', context.priority);
+    }
+    
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+    
+    const messageContext: MessageContext = {
       streak: this.pattern.completionStreak,
       engagement: this.pattern.engagementScore,
-      timeOfDay: (() => {
-        const hour = new Date().getHours();
-        return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
-      })() as 'morning' | 'afternoon' | 'evening' | 'night',
-      priority: context.priority || 'medium'
+      timeOfDay: timeOfDay as 'morning' | 'afternoon' | 'evening' | 'night',
+      priority: context?.priority || 'medium'
     };
     
-    return this.generateMotivationalMessage(motivationContext);
+    // Delegate to centralized service (always prefer motivational)
+    return messageGenerationService.generateMessage(messageContext, true);
   }
 
   getBehavioralInsights(): BehavioralInsight {
@@ -402,7 +394,7 @@ export const registerPushNotifications = async () => {
   try {
     const result = await PushNotifications.requestPermissions();
     if (result.receive !== 'granted') {
-      console.warn('Push notification permission denied');
+      logger.warn('Push notification permission denied');
       return;
     }
 
@@ -410,12 +402,12 @@ export const registerPushNotifications = async () => {
 
     PushNotifications.addListener('registration', (token: Token) => {
       analytics.track('push_token_registered', { token: securityService.sanitizeForLogging(token.value) });
-      console.log('Push registration success, token: ' + securityService.sanitizeForLogging(token.value));
+      logger.log('Push registration success, token: ' + securityService.sanitizeForLogging(token.value));
     });
 
     PushNotifications.addListener('registrationError', (error: any) => {
       analytics.track('push_registration_error', { error: securityService.sanitizeForLogging(String(error.error)) });
-      console.error('Push registration error: ', securityService.sanitizeForLogging(String(error.error)));
+      logger.error('Push registration error: ', securityService.sanitizeForLogging(String(error.error)));
     });
 
     PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
@@ -424,7 +416,7 @@ export const registerPushNotifications = async () => {
         body: securityService.sanitizeForLogging(notification.body || ''),
         id: notification.id 
       });
-      console.log('Push notification received: ', {
+      logger.log('Push notification received: ', {
         title: securityService.sanitizeForLogging(notification.title || ''),
         body: securityService.sanitizeForLogging(notification.body || ''),
         id: notification.id
@@ -436,11 +428,11 @@ export const registerPushNotifications = async () => {
         actionId: action.actionId,
         notificationId: action.notification.id 
       });
-      console.log('Push notification action performed: ', action.actionId);
+      logger.log('Push notification action performed: ', action.actionId);
     });
 
   } catch (error) {
-    console.warn('Push notification registration failed:', error);
+    logger.warn('Push notification registration failed:', error);
     analytics.track('push_registration_failed', { error });
   }
 };
@@ -652,7 +644,7 @@ export const sendContextualNudge = async (
 ): Promise<boolean> => {
   // Enterprise Rate Limiting Check
   if (!rateLimitService.canSendNotification('contextual')) {
-    console.log('[Neural Nudge] Contextual nudge blocked by rate limiting');
+    logger.log('[Neural Nudge] Contextual nudge blocked by rate limiting');
     rateLimitService.recordNotificationAttempt('contextual', false);
     return false;
   }
@@ -671,7 +663,7 @@ export const sendContextualNudge = async (
     rateLimitService.recordNotificationAttempt('contextual', success);
     return success;
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     rateLimitService.recordNotificationAttempt('contextual', false);
     return false;
   }
@@ -732,7 +724,7 @@ export const generateMotivationalNudge = async (
 ): Promise<boolean> => {
   // Enterprise Rate Limiting Check
   if (!rateLimitService.canSendNotification('motivational')) {
-    console.log('[Neural Nudge] Motivational nudge blocked by rate limiting');
+    logger.log('[Neural Nudge] Motivational nudge blocked by rate limiting');
     rateLimitService.recordNotificationAttempt('motivational', false);
     return false;
   }
@@ -769,8 +761,14 @@ export const generateMotivationalNudge = async (
 
     return success;
   } catch (error) {
+    // Handle gracefully without crashing
+    logger.error('[Neural Nudge] Motivational nudge failed:', error);
     rateLimitService.recordNotificationAttempt('motivational', false);
-    throw error;
+    analytics.track('motivational_nudge_error', {
+      error: String(error),
+      context: motivationContext
+    });
+    return false;
   }
 };
 
@@ -802,6 +800,18 @@ export const getBehavioralInsights = () => {
 export const sendBehavioralIntervention = async (
   context?: NotificationContext
 ): Promise<boolean> => {
+  // Input validation
+  if (context) {
+    if (context.priority && !['low', 'medium', 'high'].includes(context.priority)) {
+      logger.warn('[Neural Nudge] Invalid priority in context:', context.priority);
+      context.priority = 'medium'; // Fallback to default
+    }
+    if (context.category && typeof context.category !== 'string') {
+      logger.warn('[Neural Nudge] Invalid category type:', typeof context.category);
+      context.category = undefined;
+    }
+  }
+  
   const behavioral = scheduler.analyzeBehavior();
   
   if (behavioral.procrastinationRisk === 'low') {
@@ -811,13 +821,19 @@ export const sendBehavioralIntervention = async (
   // FIXED: Enterprise Rate Limiting Check with proper error handling
   if (!rateLimitService.canSendNotification('intervention')) {
     const status = rateLimitService.getRateLimitStatus();
-    console.log(`[Neural Nudge] Intervention blocked by rate limiting - ${Math.round(status.timeUntilNext / 1000)}s remaining`);
+    logger.log(`[Neural Nudge] Intervention blocked by rate limiting - ${Math.round(status.timeUntilNext / 1000)}s remaining`);
     rateLimitService.recordNotificationAttempt('intervention', false);
     return false;
   }
   
   // A/B Test: Intervention Timing Strategy
   const timingVariant = abTestService.getVariant('intervention_timing');
+  const validTimingVariants = ['aggressive', 'gentle', 'adaptive'];
+  
+  if (timingVariant && !validTimingVariants.includes(timingVariant)) {
+    logger.warn('[Neural Nudge] Invalid timing variant:', timingVariant);
+  }
+  
   let actualTiming = behavioral.interventionTiming;
   
   if (timingVariant === 'aggressive') {
@@ -874,8 +890,14 @@ export const sendBehavioralIntervention = async (
     
     return success;
   } catch (error) {
+    // Don't re-throw - handle gracefully
+    logger.error('[Neural Nudge] Behavioral intervention failed:', error);
     rateLimitService.recordNotificationAttempt('intervention', false);
-    throw error;
+    analytics.track('behavioral_intervention_error', {
+      error: String(error),
+      risk: behavioral.procrastinationRisk
+    });
+    return false; // Return false instead of crashing
   }
 };
 

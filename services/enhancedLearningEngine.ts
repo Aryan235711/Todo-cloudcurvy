@@ -1,11 +1,61 @@
 // Enhanced Intelligent Feedback Engine
 import { LEARNING_CONSTANTS } from '../config/behavioralConstants';
 import { behavioralStorage } from './behavioralStorage';
+import { logger } from '../utils/logger';
+
+interface UserOutcome {
+  completed: boolean;
+  engaged: boolean;
+  ignored: boolean;
+  frustrated: boolean;
+}
 
 interface PredictionResult {
   prediction: number;
   confidence: number;
   reasoning: string[];
+}
+
+interface PredictionContext {
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+  priority: 'low' | 'medium' | 'high';
+  streak: number;
+  engagement: number;
+}
+
+interface PersonalizedThresholds {
+  procrastinationHigh: number;
+  procrastinationMedium: number;
+  activityTimeout: number;
+}
+
+interface ModelMetrics {
+  totalPredictions: number;
+  correctPredictions: number;
+  accuracy: number;
+  lastUpdated: number;
+}
+
+interface UserModel {
+  messageEffectiveness: Record<string, number>;
+  interactions: Array<{
+    timestamp: number;
+    messageType: string;
+    outcome: UserOutcome;
+    signal: number;
+    context?: string;
+  }>;
+  personalizedThresholds: PersonalizedThresholds;
+  modelMetrics: ModelMetrics;
+  createdAt: number;
+}
+
+interface ModelInsights {
+  accuracy: number;
+  totalInteractions: number;
+  personalizedThresholds: PersonalizedThresholds;
+  messageEffectiveness: Record<string, number>;
+  lastUpdated: number;
 }
 
 export class EnhancedLearningEngine {
@@ -15,24 +65,43 @@ export class EnhancedLearningEngine {
     this.userId = userId;
   }
   
-  processUserFeedback(messageType: string, outcome: any, context?: string): void {
+  processUserFeedback(messageType: string, outcome: UserOutcome, context?: string): void {
+    // Input validation
+    if (!messageType || typeof messageType !== 'string' || messageType.trim().length === 0) {
+      logger.warn('[EnhancedLearning] Invalid messageType:', messageType);
+      return;
+    }
+    
+    if (!outcome || typeof outcome !== 'object') {
+      logger.warn('[EnhancedLearning] Invalid outcome:', outcome);
+      return;
+    }
+    
+    // Sanitize messageType
+    const validMessageTypes = ['motivational', 'gentle', 'urgent', 'celebration', 'encouraging', 'neutral'];
+    const sanitizedMessageType = messageType.trim().toLowerCase();
+    
+    if (!validMessageTypes.includes(sanitizedMessageType) && !sanitizedMessageType.startsWith('custom_')) {
+      logger.warn('[EnhancedLearning] Unknown messageType, allowing as custom:', sanitizedMessageType);
+    }
+    
     const model = this.getUserModel();
     const signal = this.calculateAdaptiveSignal(outcome, context);
     const learningRate = this.calculateAdaptiveLearningRate(model);
     
     // Update message effectiveness with adaptive learning
-    if (!model.messageEffectiveness[messageType]) {
-      model.messageEffectiveness[messageType] = 0.5;
+    if (!model.messageEffectiveness[sanitizedMessageType]) {
+      model.messageEffectiveness[sanitizedMessageType] = 0.5;
     }
     
-    const currentEffectiveness = model.messageEffectiveness[messageType];
+    const currentEffectiveness = model.messageEffectiveness[sanitizedMessageType];
     const newEffectiveness = currentEffectiveness + (signal * learningRate);
-    model.messageEffectiveness[messageType] = Math.max(0, Math.min(1, newEffectiveness));
+    model.messageEffectiveness[sanitizedMessageType] = Math.max(0, Math.min(1, newEffectiveness));
     
     // Store enhanced interaction data
     model.interactions.push({
       timestamp: Date.now(),
-      messageType,
+      messageType: sanitizedMessageType,
       outcome,
       signal,
       context: context || 'general'
@@ -48,7 +117,7 @@ export class EnhancedLearningEngine {
     behavioralStorage.saveUserModel(this.userId, model);
   }
   
-  private calculateAdaptiveSignal(outcome: any, context?: string): number {
+  private calculateAdaptiveSignal(outcome: UserOutcome, context?: string): number {
     let signal = 0;
     const weights = LEARNING_CONSTANTS.FEEDBACK_WEIGHTS;
     
@@ -66,7 +135,7 @@ export class EnhancedLearningEngine {
     return Math.max(-1, Math.min(1, signal));
   }
   
-  private calculateAdaptiveLearningRate(model: any): number {
+  private calculateAdaptiveLearningRate(model: UserModel): number {
     const baseRate = LEARNING_CONSTANTS.ADAPTIVE_LEARNING.BASE_RATE;
     const accuracy = model.modelMetrics.accuracy;
     const sampleCount = model.interactions.length;
@@ -88,7 +157,7 @@ export class EnhancedLearningEngine {
     );
   }
   
-  private updatePersonalizedThresholds(model: any): void {
+  private updatePersonalizedThresholds(model: UserModel): void {
     const recentInteractions = model.interactions.slice(-20);
     if (recentInteractions.length < LEARNING_CONSTANTS.MEMORY_LIMITS.MIN_SAMPLES_FOR_PREDICTION) return;
     
@@ -111,7 +180,7 @@ export class EnhancedLearningEngine {
     model.personalizedThresholds.activityTimeout = Math.max(1.0, Math.min(8.0, model.personalizedThresholds.activityTimeout));
   }
   
-  private updateModelMetrics(model: any, outcome: any): void {
+  private updateModelMetrics(model: UserModel, outcome: UserOutcome): void {
     model.modelMetrics.totalPredictions++;
     
     // Simple accuracy tracking - if user engaged or completed, prediction was good
@@ -122,7 +191,37 @@ export class EnhancedLearningEngine {
     model.modelMetrics.accuracy = model.modelMetrics.correctPredictions / model.modelMetrics.totalPredictions;
   }
   
-  predictOptimalMessageType(context: any): PredictionResult {
+  predictOptimalMessageType(context: PredictionContext): PredictionResult {
+    // Input validation
+    if (!context || typeof context !== 'object') {
+      logger.warn('[EnhancedLearning] Invalid context:', context);
+      return {
+        prediction: 0.5,
+        confidence: 0.3,
+        reasoning: ['Invalid context provided, using defaults']
+      };
+    }
+    
+    // Validate context fields
+    const validTimes = ['morning', 'afternoon', 'evening', 'night'];
+    const validPriorities = ['low', 'medium', 'high'];
+    
+    if (!validTimes.includes(context.timeOfDay)) {
+      logger.warn('[EnhancedLearning] Invalid timeOfDay:', context.timeOfDay);
+    }
+    
+    if (!validPriorities.includes(context.priority)) {
+      logger.warn('[EnhancedLearning] Invalid priority:', context.priority);
+    }
+    
+    if (typeof context.streak !== 'number' || context.streak < 0) {
+      logger.warn('[EnhancedLearning] Invalid streak:', context.streak);
+    }
+    
+    if (typeof context.engagement !== 'number' || context.engagement < 0 || context.engagement > 1) {
+      logger.warn('[EnhancedLearning] Invalid engagement (should be 0-1):', context.engagement);
+    }
+    
     const model = this.getUserModel();
     const messageTypes = ['motivational', 'gentle', 'urgent', 'celebration'];
     
@@ -157,7 +256,7 @@ export class EnhancedLearningEngine {
     };
   }
   
-  private getUserModel(): any {
+  private getUserModel(): UserModel {
     let model = behavioralStorage.loadUserModel(this.userId);
     
     if (!model) {
@@ -193,7 +292,7 @@ export class EnhancedLearningEngine {
     return contextMap[context] || 0;
   }
   
-  getModelInsights(): any {
+  getModelInsights(): ModelInsights {
     const model = this.getUserModel();
     return {
       accuracy: model.modelMetrics.accuracy,

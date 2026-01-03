@@ -5,6 +5,7 @@ import { getTaskBreakdown } from '../services/geminiService';
 import { triggerHaptic } from '../services/notificationService';
 import { shouldShowDeleteConfirmation, isGestureEnabled } from '../services/preferencesService';
 import { HelpTooltip } from './ui/HelpTooltip';
+import { logger } from '../utils/logger';
 
 interface TodoCardProps {
   todo: Todo;
@@ -155,9 +156,13 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
     onToggle(todo.id);
     
     if (!todo.completed) {
-      import('../services/notificationService').then(({ recordTaskCompletion }) => {
-        recordTaskCompletion(todo.priority);
-      });
+      import('../services/notificationService')
+        .then(({ recordTaskCompletion }) => {
+          recordTaskCompletion(todo.priority);
+        })
+        .catch((error) => {
+          logger.warn('Failed to record task completion:', error);
+        });
     }
   };
 
@@ -265,6 +270,7 @@ export const TodoCard = memo(({ todo, onToggle, onDelete, onEdit, onUpdateSubtas
                     if (e.key === 'Enter') handleSaveEdit();
                     if (e.key === 'Escape') handleCancelEdit();
                   }}
+                  aria-label="Edit task text"
                   className="flex-1 text-lg font-black bg-transparent border-b-2 border-indigo-300 focus:border-indigo-500 outline-none py-1"
                   autoFocus
                 />

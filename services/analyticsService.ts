@@ -1,3 +1,5 @@
+import { safeJsonParse, safeJsonStringify } from '../utils/safeJson';
+
 interface TaskEvent {
   id: string;
   taskId: string;
@@ -34,7 +36,7 @@ class AnalyticsService {
     try {
       const stored = localStorage.getItem('loop_analytics');
       if (stored) {
-        const data = JSON.parse(stored);
+        const data = safeJsonParse(stored, { events: [], lifecycles: [] });
         this.events = data.events || [];
         this.lifecycles = new Map(data.lifecycles || []);
       }
@@ -45,10 +47,11 @@ class AnalyticsService {
 
   private saveToStorage() {
     try {
-      localStorage.setItem('loop_analytics', JSON.stringify({
+      const data = safeJsonStringify({
         events: this.events.slice(-1000), // Keep last 1000 events
         lifecycles: Array.from(this.lifecycles.entries())
-      }));
+      });
+      localStorage.setItem('loop_analytics', data);
     } catch {
       // Silent fail
     }

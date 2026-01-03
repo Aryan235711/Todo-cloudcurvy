@@ -14,6 +14,7 @@ import { useTodoLogic } from './hooks/useTodoLogic';
 import { promptForApiKey, setStoredApiKey } from './services/apiKeyService';
 import { validateApiKey } from './services/geminiService';
 import { HelpTooltip } from './components/ui/HelpTooltip';
+import { logger } from './utils/logger';
 
 // Refactored Modular Components
 import { Header } from './components/layout/Header';
@@ -33,11 +34,15 @@ import { UnifiedTestDashboard } from './components/UnifiedTestDashboard';
 
 // Import test runner for development
 if (process.env.NODE_ENV === 'development') {
-  import('./tests/testRunner').then(({ runComprehensiveTests, removeDebugLogs }) => {
-    (window as any).runTests = runComprehensiveTests;
-    (window as any).removeDebugLogs = removeDebugLogs;
-    console.log('🧪 Test commands available: runTests(), removeDebugLogs()');
-  });
+  import('./tests/testRunner')
+    .then(({ runComprehensiveTests, removeDebugLogs }) => {
+      (window as any).runTests = runComprehensiveTests;
+      (window as any).removeDebugLogs = removeDebugLogs;
+      logger.feature('test', 'Test commands available: runTests(), removeDebugLogs()');
+    })
+    .catch((error) => {
+      logger.warn('Failed to load test runner:', error);
+    });
 }
 
 const App: React.FC = () => {
@@ -341,7 +346,7 @@ const App: React.FC = () => {
   type BundleNode = { type: 'bundle'; name: string; items: Todo[] };
   const isBundleNode = (node: Todo | BundleNode): node is BundleNode => 'type' in node;
 
-  const buildCategorizedNodes = (items: Todo[]) => {
+  const buildCategorizedNodes = useCallback((items: Todo[]) => {
     const nodes: (Todo | BundleNode)[] = [];
     const bundleItemsByName = new Map<string, Todo[]>();
 
@@ -361,7 +366,7 @@ const App: React.FC = () => {
     });
 
     return nodes;
-  };
+  }, []);
 
   const renderCategorizedNode = (node: Todo | BundleNode, _idx: number) => {
     if (isBundleNode(node)) {

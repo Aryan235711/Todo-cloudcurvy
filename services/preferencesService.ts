@@ -1,3 +1,5 @@
+import { safeJsonParse } from '../utils/safeJson';
+
 interface UserPreferences {
   confirmations: {
     deleteTask: boolean;
@@ -45,7 +47,7 @@ class PreferencesService {
     try {
       const stored = localStorage.getItem('loop_preferences');
       if (stored) {
-        this.preferences = { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) };
+        this.preferences = { ...DEFAULT_PREFERENCES, ...safeJsonParse<Partial<UserPreferences>>(stored, {}) };
       }
     } catch {
       this.preferences = DEFAULT_PREFERENCES;
